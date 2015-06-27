@@ -1,10 +1,12 @@
 # neuro
 
-A Clojure library designed to ... well, that part is up to you.
+ニューラルネットワークで遊ぶ
 
-## Usage
+## やったこと
 
-FIXME
+* mnist を読み込む
+
+
 
 ## License
 
