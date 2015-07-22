@@ -29,10 +29,21 @@
 (defn diff-fn [dataset params]
   (* 0.5
      (square-sum
-      (for [data dataset
-            :let [multi (multi-calc (:x data) params)
-                  [d x] (first (map vector multi (:test data)))]]
+      (for [{x :x, ans :ans} dataset
+            :let [multi (multi-calc x params)
+                  [x d] (first (map vector multi ans))]]
         (- x d)))))
+
+(defn diff-fn-2class
+  "2値分類の誤差関数"
+  [dataset params]
+  (* -1.0
+     (apply +
+            (for [{x :x, a :ans} dataset
+                  :let [m (multi-calc x params)
+                        [y d] (first (map vector m a))]]
+              (+ (* d (Math/log y))
+                 (* (- 1.0 d) (Math/log (- 1.0 y))))))))
 
 (defn rand-add [x]
   (+ x
@@ -50,31 +61,31 @@
   (let [p (assoc params :weight (weight-randomize (:weight params)))]
     (assoc p :bias (bias-randomize (:bias params)))))
 
-(defn train-next [dataset first-params]
+(defn train-next [dataset first-params dfn]
   (let [param1 (next-params first-params)
-        diff1 (diff-fn dataset param1)
+        diff1 (dfn dataset param1)
         param2 (next-params first-params)
-        diff2 (diff-fn dataset param2)]
+        diff2 (dfn dataset param2)]
     (cond (< diff1 diff2) param1
           (> diff1 diff2) param2
           :else first-params)))
 
-(defn train [dataset init-params limit]
+(defn train [dataset init-params limit dfn]
   (loop [params init-params]
-    (if (< (diff-fn dataset params) limit)
+    (if (< (dfn dataset params) limit)
       params
-      (recur (train-next dataset params)))))
+      (recur (train-next dataset params dfn)))))
 
 
 
 
 
 
-(def testdata [{:x [1 2] :test [1]}
-               {:x [2 3] :test [0]}
-               {:x [1 4] :test [1]}
-               {:x [2 8] :test [0]}
-               {:x [1 9] :test [1]}
+(def testdata [{:x [1 2] :ans [1]}
+               {:x [2 3] :ans [0]}
+               {:x [1 4] :ans [1]}
+               {:x [2 8] :ans [0]}
+               {:x [1 9] :ans [1]}
                ])
 (def params {:weight [[0.2 0.7]]
 ;                      [0.1 0.9]]
