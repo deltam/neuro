@@ -43,8 +43,12 @@
          (for [w-seq w-matrix]
            (apply vector (map #(rand-add %) w-seq)))))
 
+(defn bias-randomize [bias-vec]
+  (apply vector (map #(rand-add %) bias-vec)))
+
 (defn next-params [params]
-  (assoc params :weight (weight-randomize (:weight params))))
+  (let [p (assoc params :weight (weight-randomize (:weight params)))]
+    (assoc p :bias (bias-randomize (:bias params)))))
 
 (defn train-next [dataset first-params]
   (let [param1 (next-params first-params)
