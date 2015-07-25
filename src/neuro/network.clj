@@ -1,2 +1,62 @@
-(ns neuro.network
-  (:require [loom.graph :as lg]))
+(ns neuro.network)
+
+(defn gen-nn
+  "多層ニューラルネットを定義する"
+  [init & level-nodes]
+  {:nodes (apply vector level-nodes)
+   :weights (apply vector
+                   (for [[in out] (seq-by-2-items level-nodes)]
+                     (gen-num-matrix init in out)))
+   :func :logistic})
+
+(defn weight [nn level in out]
+  (let [w-mat ((:weights nn) level)]
+    ((w-mat in) out)))
+
+(defn update-weight
+  "重みを更新する"
+  [nn w level in-node out-node]
+  (let [w-mat (:weights nn)]
+    (assoc nn :weights (update-matrix-at (w-mat level) in-node out-node w))))
+
+
+(defn- gen-num-vec [init n]
+  (let [init-f #(if (number? init) init (init))]
+    (apply vector
+           (repeat n (init-f)))))
+
+(defn- gen-num-matrix [init x y]
+  (gen-num-vec #(gen-num-vec init y) x))
+
+(defn- seq-by-2-items [s]
+  (loop [ret [], cur s, next (rest s)]
+    (if (and (not-empty cur) (not-empty next))
+      (recur (conj ret [(first cur) (first next)]) (rest cur) (rest next))
+      ret)))
+
+(defn- update-at [v idx val]
+  (apply vector
+         (concat (subvec v 0 idx)
+                 [val]
+                 (subvec v (inc idx)))))
+
+(defn- update-matrix-at [mat x y val]
+  (update-at mat x
+             (update-at (mat x) y val)))
+
+
+
+
+(comment
+
+(def nn {:nodes [3 2 1]
+         :weights [
+                   [[0.0 0.0]
+                    [0.0 0.0]
+                    [0.0 0.0]]
+                   [[0.0]
+                    [0.0]]
+                   ]
+         :func :logistic})
+
+)
