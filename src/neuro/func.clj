@@ -10,20 +10,11 @@
   [x]
   (/ 1.0 (+ 1.0 (Math/exp (- x)))))
 
-(defn calc [x-seq weight-seq bias activation-func]
-  (let [pair (map vector x-seq weight-seq)
-        u (+ (apply + (map (fn [[x w]] (* x w)) pair)) bias)]
-    (activation-func u)))
 
-(defn multi-calc [x-seq {weight-matrix :weight, bias-seq :bias, activation-func :fn}]
-  (for [[w-seq b] (map vector weight-matrix bias-seq)]
-    (calc x-seq w-seq b activation-func)))
-
-
-(defn square [x]
+(defn- square [x]
   (* x x))
 
-(defn square-sum [x-seq]
+(defn- square-sum [x-seq]
   (apply +
          (map square x-seq)))
 
