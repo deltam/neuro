@@ -27,9 +27,10 @@
   (* 0.5
      (square-sum
       (for [{x :x, ans :ans} dataset
-            :let [v-seq (core/nn-calc nn x)
-                  [x d] (first (map vector v ans))]]
-        (- x d)))))
+            :let [v-seq (core/nn-calc nn x)]]
+        (apply +
+               (map (fn [v d] (- v d)) v-seq ans))))))
+
 
 (defn diff-fn-2class
   "2値分類の誤差関数"
@@ -65,11 +66,13 @@
 
 (comment
 
-(def testdata [{:x [1 2 1] :ans [1]}
-               {:x [2 3 1] :ans [0]}
-               {:x [1 4 1] :ans [1]}
-               {:x [2 8 1] :ans [0]}
-               {:x [1 9 1] :ans [1]}
+(def nn (nw/gen-nn 0.1 3 2 1))
+
+(def traindata [{:x [1 2 1] :ans [1 0]}
+                {:x [2 3 1] :ans [0 1]}
+                {:x [1 4 1] :ans [1 0]}
+                {:x [2 8 1] :ans [0 1]}
+                {:x [1 9 1] :ans [1 0]}
                ])
 
 )
