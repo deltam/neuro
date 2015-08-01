@@ -67,37 +67,39 @@
 
 
 
-(defn diff-fn-regression
-  "回帰解析用の誤差関数"
-  [nn dataset]
-  (* 0.5
-     (square-sum
-      (for [{x :x, ans :ans} dataset
-            :let [v-seq (core/nn-calc nn x)]]
-        (apply +
-               (map (fn [v d] (- v d)) v-seq ans))))))
-
-(defn- weight-randomize [w-mat]
-  (apply vector
-         (for [w-seq w-mat]
-           (apply vector (map #(rand-add %) w-seq)))))
-
-(defn- rand-add [x]
-  (+ x
-     (rand-nth [0.000001 0 -0.000001])))
-
-(defn- square [x]
-  (* x x))
-
-(defn- square-sum [x-seq]
-  (apply +
-         (map square x-seq)))
-
+;(defn diff-fn-regression
+;  "回帰解析用の誤差関数"
+;  [nn dataset]
+;  (* 0.5
+;     (square-sum
+;      (for [{x :x, ans :ans} dataset
+;            :let [v-seq (core/nn-calc nn x)]]
+;        (apply +
+;               (map (fn [v d] (- v d)) v-seq ans))))))
+;
+;(defn- weight-randomize [w-mat]
+;  (apply vector
+;         (for [w-seq w-mat]
+;           (apply vector (map #(rand-add %) w-seq)))))
+;
+;(defn- rand-add [x]
+;  (+ x
+;     (rand-nth [0.000001 0 -0.000001])))
+;
+;(defn- square [x]
+;  (* x x))
+;
+;(defn- square-sum [x-seq]
+;  (apply +
+;         (map square x-seq)))
+;
 
 
 (comment
 
-(def nn-2class (nw/gen-nn 0.1 3 2 1))
+(def nn-2class
+  (nw/map-weights (fn [w l i o] (do (Thread/sleep 150) (rand)))
+                  (nw/gen-nn 0.0 3 2 1)))
 
 (def traindata-2class [{:x [1 1 1] :ans [1]}
                        {:x [2 3 1] :ans [1]}
