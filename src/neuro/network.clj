@@ -16,8 +16,9 @@
 (defn update-weight
   "重みを更新する"
   [nn w level in-node out-node]
-  (let [w-mat (:weights nn)]
-    (assoc nn :weights (update-matrix-at (w-mat level) in-node out-node w))))
+  (let [w-mat (:weights nn)
+        updated (update-matrix-at (w-mat level) in-node out-node w)]
+    (assoc nn :weights (update-at w-mat level updated))))
 
 
 (defn- gen-num-vec [init n]
