@@ -2,14 +2,18 @@
   (:require [neuro.core :as core]
             [neuro.network :as nw]))
 
+(def ^:dynamic *weight-inc-val* 0.00001)
+(def ^:dynamic *learning-param* 0.00001)
 
 (defn train [init-nn dataset dfn]
-  (loop [cur-nn init-nn, diff (dfn init-nn dataset)]
+  (loop [cur-nn init-nn, diff (dfn init-nn dataset) , cnt 0]
     (let [next (train-next cur-nn dataset dfn)
           next-diff (dfn next dataset)]
-      (if (< (Math/abs (- diff next-diff)) 0.000001)
+      (if (zero? (mod cnt 100))
+        (println cnt " now diff: " next-diff))
+      (if (< (Math/abs (- diff next-diff)) 0.00000001)
         cur-nn
-        (recur next, next-diff)))))
+        (recur next, next-diff, (inc cnt))))))
 
 (defn train-next [nn dataset dfn]
   (let [diff1 (dfn nn dataset)
@@ -67,17 +71,16 @@
         :let [grd (gradient nn dfn dataset level in out)
               w (nw/weight nn level in out)
               diff (dfn nn dataset)]]
-    [(- w (* 0.01 diff)) level in out]))
+    [(- w (* *learning-param* diff)) level in out]))
 
 (defn- gradient
   "nnの微小増分の傾きを返す"
   [nn dfn dataset level in out]
-  (let [b 0.01
-        w (nw/weight nn level in out)
-        nn-inc (nw/update-weight nn (+ w b) level in out)
+  (let [w (nw/weight nn level in out)
+        nn-inc (nw/update-weight nn (+ w *weight-inc-val*) level in out)
         y (dfn nn dataset)
         y-inc (dfn nn-inc dataset)]
-    (/ (- y-inc y) b)))
+    (/ (- y-inc y) *weight-inc-val*)))
 
 
 
@@ -103,11 +106,12 @@
 
 (def nn-2class (nw/gen-nn 0.1 3 2 1))
 
-(def traindata-2class [{:x [1 2 1] :ans [1]}
-                       {:x [2 3 1] :ans [0]}
+(def traindata-2class [{:x [1 1 1] :ans [1]}
+                       {:x [2 3 1] :ans [1]}
                        {:x [1 4 1] :ans [1]}
                        {:x [2 8 1] :ans [0]}
-                       {:x [1 9 1] :ans [1]}
+                       {:x [1 9 1] :ans [0]}
+                       {:x [9 2 1] :ans [0]}
                        ])
 
 (def train-nn-2class (train nn-2class traindata-2class diff-fn-2class))
