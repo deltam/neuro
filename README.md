@@ -5,12 +5,15 @@
 ## やったこと
 
 * mnist を読み込む
+* 勾配降下法で二値分類を学習
 
+## これからやりたいこと
 
+* 多クラス分類
+* 確率的勾配降下法で学習する
+* 誤差逆伝播法で学習する
+* mnistから学習して手書き文字認識をする
 
 ## License
 
-Copyright © 2015 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Copyright © 2015 MISUMI Masaru
