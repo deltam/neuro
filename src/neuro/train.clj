@@ -97,9 +97,7 @@
 
 (comment
 
-(def nn-2class
-  (nw/map-weights (fn [w l i o] (do (Thread/sleep 150) (rand)))
-                  (nw/gen-nn 0.0 3 2 1)))
+(def nn-2class (nw/gen-nn :rand 3 2 1))
 
 (def traindata-2class [{:x [1 1 1] :ans [1]}
                        {:x [2 3 1] :ans [1]}

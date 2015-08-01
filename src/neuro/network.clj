@@ -1,4 +1,5 @@
-(ns neuro.network)
+(ns neuro.network
+  (:require [clojure.data.generators :as gr]))
 
 (defn gen-nn
   "多層ニューラルネットを定義する"
@@ -35,12 +36,18 @@
 
 
 
-
+(defn- weight-init-f [init]
+  (if (= :rand init)
+    (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
+      (fn [] (gr/double)))
+    (if (fn? init)
+      init
+      (fn [] init))))
 
 (defn- gen-num-vec [init n]
-  (let [init-f #(if (number? init) init (init))]
+  (let [init-f (weight-init-f init)]
     (apply vector
-           (repeat n (init-f)))))
+           (repeatedly n init-f))))
 
 (defn- gen-num-matrix [init x y]
   (gen-num-vec #(gen-num-vec init y) x))
