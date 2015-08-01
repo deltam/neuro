@@ -7,7 +7,7 @@
 (def ^:dynamic *learning-param* 0.00001)
 
 
-(defn train [init-nn dataset dfn]
+(defn train [init-nn dfn dataset]
   (loop [cur-nn init-nn, diff (dfn init-nn dataset) , cnt 0]
     (let [next (train-next cur-nn dataset dfn)
           next-diff (dfn next dataset)]
@@ -45,25 +45,16 @@
 (defn- weight-gradient
   "勾配降下法で重みを更新する"
   [nn dfn dataset]
-  (loop [cur-nn nn, level 0, in-nodes (:nodes nn), out-nodes (rest (:nodes nn))]
-    (if (empty? out-nodes)
-      cur-nn
-      (let [in-idx (range (first in-nodes))
-            out-idx (range (first out-nodes))
-            w-args (w-update-args cur-nn dfn dataset level in-idx out-idx)
-            next-nn (reduce (fn [ret-nn [new-w l i o]] (nw/update-weight ret-nn new-w l i o))
-                            cur-nn
-                            w-args)]
-        (recur next-nn, (inc level), (rest in-nodes), (rest out-nodes))))))
+  (nw/map-weights (fn [w l i o]
+                    (update-by-gradient w nn dfn dataset l i o))
+                  nn))
 
-(defn- w-update-args
-  "重みを更新するための値を作る"
-  [nn dfn dataset level in-nodes out-nodes]
-  (for [in in-nodes, out out-nodes
-        :let [grd (gradient nn dfn dataset level in out)
-              w (nw/weight nn level in out)
-              diff (dfn nn dataset)]]
-    [(- w (* *learning-param* diff)) level in out]))
+(defn- update-by-gradient
+  "重みを勾配に従って更新した値を返す"
+  [w nn dfn dataset level in out]
+  (let [grd (gradient nn dfn dataset level in out)
+        diff (dfn nn dataset)]
+    (- w (* *learning-param* diff))))
 
 (defn- gradient
   "nnの微小増分の傾きを返す"
