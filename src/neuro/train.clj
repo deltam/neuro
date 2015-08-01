@@ -2,8 +2,10 @@
   (:require [neuro.core :as core]
             [neuro.network :as nw]))
 
+
 (def ^:dynamic *weight-inc-val* 0.00001)
 (def ^:dynamic *learning-param* 0.00001)
+
 
 (defn train [init-nn dataset dfn]
   (loop [cur-nn init-nn, diff (dfn init-nn dataset) , cnt 0]
@@ -26,16 +28,6 @@
   (weight-gradient nn dfn dataset))
 
 
-
-(defn diff-fn-regression
-  "回帰解析用の誤差関数"
-  [nn dataset]
-  (* 0.5
-     (square-sum
-      (for [{x :x, ans :ans} dataset
-            :let [v-seq (core/nn-calc nn x)]]
-        (apply +
-               (map (fn [v d] (- v d)) v-seq ans))))))
 
 (defn diff-fn-2class
   "2値分類の誤差関数 nn の出力層は1ニューロン"
@@ -83,6 +75,16 @@
     (/ (- y-inc y) *weight-inc-val*)))
 
 
+
+(defn diff-fn-regression
+  "回帰解析用の誤差関数"
+  [nn dataset]
+  (* 0.5
+     (square-sum
+      (for [{x :x, ans :ans} dataset
+            :let [v-seq (core/nn-calc nn x)]]
+        (apply +
+               (map (fn [v d] (- v d)) v-seq ans))))))
 
 (defn- weight-randomize [w-mat]
   (apply vector
