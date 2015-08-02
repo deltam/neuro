@@ -97,16 +97,35 @@
 
 (comment
 
-(def nn-2class (nw/gen-nn :rand 3 2 1))
+(def nn-2class (let [nn (nw/gen-nn :rand 3 4 1)]
+                 ;; biasノードの初期値は0
+                 (nw/map-weights (fn [w l i o]
+                                   (if (or (and (= l 0) (= i 2))
+                                           (and (= l 1) (= i 3)))
+                                     0.0
+                                     w))
+                                 nn)))
 
-(def traindata-2class [{:x [1 1 1] :ans [1]}
-                       {:x [2 3 1] :ans [1]}
-                       {:x [1 4 1] :ans [1]}
-                       {:x [2 8 1] :ans [0]}
-                       {:x [1 9 1] :ans [0]}
-                       {:x [9 2 1] :ans [0]}
+(def traindata-2class [{:x [2 5 1] :ans [0]}
+                       {:x [3 2 1] :ans [0]}
+                       {:x [4 1 1] :ans [0]}
+                       {:x [8 3 1] :ans [0]}
+                       {:x [3 7 1] :ans [1]}
+                       {:x [4 4 1] :ans [1]}
+                       {:x [7 6 1] :ans [1]}
+                       {:x [3 7 1] :ans [1]}
+                       {:x [4 8 1] :ans [1]}
+                       {:x [7 8 1] :ans [1]}
+                       {:x [7 6 1] :ans [1]}
                        ])
 
-(def train-nn-2class (train nn-2class traindata-2class diff-fn-2class))
+(def train-nn-2class (train nn-2class diff-fn-2class traindata-2class))
 
+
+(map (fn [x] (core/nn-calc train-nn-2class x))
+     (for [t traindata-2class :when (= (:ans t) [0])]
+       (:x t)))
+(map (fn [x] (core/nn-calc train-nn-2class x))
+     (for [t traindata-2class :when (= (:ans t) [1])]
+       (:x t)))
 )
