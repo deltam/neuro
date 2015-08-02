@@ -1,6 +1,7 @@
 (ns neuro.train
   (:require [neuro.core :as core]
-            [neuro.network :as nw]))
+            [neuro.network :as nw]
+            [clojure.data.generators :as gr]))
 
 
 (def ^:dynamic *weight-inc-val* 0.00001)
@@ -11,9 +12,10 @@
   (loop [cur-nn init-nn, diff (dfn init-nn dataset) , cnt 0]
     (let [next (train-next cur-nn dataset dfn)
           next-diff (dfn next dataset)]
-      (if (zero? (mod cnt 100))
+      (if (zero? (mod cnt 1000))
         (println cnt " now diff: " next-diff))
-      (if (< (Math/abs (- diff next-diff)) 0.00000001)
+;      (if (< (Math/abs (- diff next-diff)) 0.00000000001)
+      (if (< next-diff 3)
         cur-nn
         (recur next, next-diff, (inc cnt))))))
 
@@ -25,7 +27,8 @@
           (>  diff1 diff2) nn2)))
 
 (defn next-nn [nn dfn dataset]
-  (weight-gradient nn dfn dataset))
+;  (weight-gradient nn dfn dataset))
+  (weight-randomize nn dfn dataset))
 
 
 
@@ -67,6 +70,19 @@
 
 
 
+(defn- rand-add [x]
+  (let [d 0.000001]
+    (+ x
+       (gr/rand-nth [d 0 (* -1 d)]))))
+
+(defn- weight-randomize
+  "重みをランダムに更新する"
+  [nn dfn dataset]
+  (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
+    (nw/map-weights (fn [w l i o] (rand-add w))
+                    nn)))
+
+
 ;(defn diff-fn-regression
 ;  "回帰解析用の誤差関数"
 ;  [nn dataset]
@@ -76,15 +92,6 @@
 ;            :let [v-seq (core/nn-calc nn x)]]
 ;        (apply +
 ;               (map (fn [v d] (- v d)) v-seq ans))))))
-;
-;(defn- weight-randomize [w-mat]
-;  (apply vector
-;         (for [w-seq w-mat]
-;           (apply vector (map #(rand-add %) w-seq)))))
-;
-;(defn- rand-add [x]
-;  (+ x
-;     (rand-nth [0.000001 0 -0.000001])))
 ;
 ;(defn- square [x]
 ;  (* x x))
