@@ -3,6 +3,7 @@
             [neuro.network :as nw]
             [clojure.data.generators :as gr]))
 
+(declare train-next)
 
 (def ^:dynamic *weight-inc-val* 0.00001)
 (def ^:dynamic *learning-param* 0.00001)
@@ -44,20 +45,7 @@
 
 
 
-
-(defn- weight-gradient
-  "勾配降下法で重みを更新する"
-  [nn dfn dataset]
-  (nw/map-weights (fn [w l i o]
-                    (update-by-gradient w nn dfn dataset l i o))
-                  nn))
-
-(defn- update-by-gradient
-  "重みを勾配に従って更新した値を返す"
-  [w nn dfn dataset level in out]
-  (let [grd (gradient nn dfn dataset level in out)
-        diff (dfn nn dataset)]
-    (- w (* *learning-param* diff))))
+;; 勾配降下法
 
 (defn- gradient
   "nnの微小増分の傾きを返す"
@@ -68,7 +56,23 @@
         y-inc (dfn nn-inc dataset)]
     (/ (- y-inc y) *weight-inc-val*)))
 
+(defn- update-by-gradient
+  "重みを勾配に従って更新した値を返す"
+  [w nn dfn dataset level in out]
+  (let [grd (gradient nn dfn dataset level in out)
+        diff (dfn nn dataset)]
+    (- w (* *learning-param* diff))))
 
+(defn- weight-gradient
+  "勾配降下法で重みを更新する"
+  [nn dfn dataset]
+  (nw/map-weights (fn [w l i o]
+                    (update-by-gradient w nn dfn dataset l i o))
+                  nn))
+
+
+
+;; ランダム更新
 
 (defn- rand-add [x]
   (+ x

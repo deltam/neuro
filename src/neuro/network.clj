@@ -1,6 +1,8 @@
 (ns neuro.network
   (:require [clojure.data.generators :as gr]))
 
+(declare gen-num-matrix seq-by-2-items update-at update-matrix-at)
+
 (defn gen-nn
   "多層ニューラルネットを定義する"
   [init & level-nodes]

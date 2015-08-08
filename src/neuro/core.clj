@@ -1,6 +1,7 @@
 (ns neuro.core
   (:require [neuro.func :as fnc]))
 
+(declare nn-calc-level nn-calc-node transposed-matrix)
 
 (defn nn-calc
   "多層ニューラルネットの計算をする"
