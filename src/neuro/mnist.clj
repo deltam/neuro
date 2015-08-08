@@ -3,10 +3,10 @@
 (def ^:dynamic *train-images-filename* "train-images-idx3-ubyte")
 (def ^:dynamic *train-labels-filename* "train-labels-idx1-ubyte")
 
-(defn read-as-byte-array [filename]
+(defn read-as-byte-buf [filename]
   (with-open [fis (java.io.FileInputStream. filename)]
     (let [channel (.getChannel fis)
-          byte-buf (java.nio.ByteBuffer/allocate 100000)]
+          byte-buf (java.nio.ByteBuffer/allocate (.size channel))]
       (.read channel byte-buf)
       byte-buf)))
 
@@ -48,10 +48,29 @@
       (.get byte-buf (+ offset cnt)))))
 
 (defn dataset []
-  (let [image-bytes (read-as-byte-array *train-images-filename*)
+  (let [image-bytes (read-as-byte-buf *train-images-filename*)
         images (bytes->images image-bytes)
-        label-bytes (read-as-byte-array *train-labels-filename*)
+        label-bytes (read-as-byte-buf *train-labels-filename*)
         labels (bytes->labels label-bytes)]
     (for [[image label] (map vector images labels)]
       {:label label
        :image image})))
+
+
+(comment
+
+(require '[neuro.mnist :as mn])
+(require '[neuro.train :as tr])
+(require '[neuro.network :as nw])
+
+(def mnist-ds (mn/dataset))
+
+(def traindata-8 (map (fn [{num :label, img :image}] {:x (apply vector img), :ans[(if (= num 8) 1.0 0.0)]})
+                  mnist-ds))
+
+(def nn (nw/gen-nn :rand 784 200 1))
+
+(tr/train nn tr/diff-fn-2class tr/weight-randomize traindata-8 (fn [_ d] (< d 0.8)))
+
+
+)
