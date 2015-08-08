@@ -63,7 +63,7 @@
         diff (dfn nn dataset)]
     (- w (* *learning-param* diff))))
 
-(defn- weight-gradient
+(defn weight-gradient
   "勾配降下法で重みを更新する"
   [nn dfn dataset]
   (nw/map-weights (fn [w l i o]
@@ -80,7 +80,7 @@
                    0
                    (* -1 *weight-random-diff*)])))
 
-(defn- weight-randomize
+(defn weight-randomize
   "重みをランダムに更新する"
   [nn dfn dataset]
   (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
