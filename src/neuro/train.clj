@@ -160,7 +160,7 @@
 )
 
 (defn nn-test [nn dataset ans ans-test]
-  (let [t (map (fn [x] (core/nn-calc nn2 x))
+  (let [t (map (fn [x] (core/nn-calc nn x))
                (for [t traindata-2class :when (= (:ans t) ans)]
                  (:x t)))
         cnt (count t)]
