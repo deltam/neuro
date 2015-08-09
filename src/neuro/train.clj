@@ -6,7 +6,7 @@
 (declare train-next)
 
 (def ^:dynamic *weight-inc-val* 0.00001)
-(def ^:dynamic *learning-param* 0.00001)
+(def ^:dynamic *learning-rate* 0.00001)
 (def ^:dynamic *weight-random-diff* 0.001)
 
 (def ^:dynamic *report-period* 100)
@@ -61,7 +61,7 @@
   [w nn dfn dataset level in out]
   (let [grd (gradient nn dfn dataset level in out)
         diff (dfn nn dataset)]
-    (- w (* *learning-param* diff))))
+    (- w (* *learning-rate* diff))))
 
 (defn weight-gradient
   "勾配降下法で重みを更新する"
