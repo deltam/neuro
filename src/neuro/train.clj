@@ -195,4 +195,20 @@
 (nn-test nn2 traindata-2class [0] #(< % 0.5))
 (nn-test nn2 traindata-2class [1] #(> % 0.5))
 
+
+(defn plot-classify
+  "ランダムな数値を分類させて結果をCSVで出力する"
+  [nn count]
+  (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
+    (let [samples (for [i (range count)
+                        :let [x1 (int (* 10 (gr/double)))
+                              x2 (int (* 10 (gr/double)))
+                              [v] (core/nn-calc nn [x1 x2 1])
+                              ok (if (< 0.5 v) 1 0)]]
+                    [x1 x2 1 ok v])]
+      (doseq [[x1 x2 _ ok _] (sort-by #(nth % 4) samples)]
+        (printf "%d,%d,%d\n" x1 x2 ok)))))
+
+
+
 )
