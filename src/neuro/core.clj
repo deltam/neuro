@@ -8,11 +8,11 @@
   [nn x-seq]
   (let [weights (:weights nn)
         level-nodes (:nodes nn)]
-    (loop [w-mats weights, mid-ans []]
+    (loop [w-mats weights, mid-ans x-seq]
       (let [w-mat (first w-mats)]
         (if (nil? w-mat)
           mid-ans
-          (let [ans (nn-calc-level x-seq w-mat)]
+          (let [ans (nn-calc-level mid-ans w-mat)]
             (recur (rest w-mats) ans)))))))
 
 
