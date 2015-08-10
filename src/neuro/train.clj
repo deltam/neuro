@@ -59,9 +59,8 @@
 (defn- update-by-gradient
   "重みを勾配に従って更新した値を返す"
   [w nn dfn dataset level in out]
-  (let [grd (gradient nn dfn dataset level in out)
-        diff (dfn nn dataset)]
-    (- w (* *learning-rate* diff))))
+  (let [grd (gradient nn dfn dataset level in out)]
+    (- w (* *learning-rate* grd))))
 
 (defn weight-gradient
   "勾配降下法で重みを更新する"
