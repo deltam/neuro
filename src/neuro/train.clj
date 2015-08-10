@@ -6,7 +6,7 @@
 (declare train-next)
 
 (def ^:dynamic *weight-inc-val* 0.00001)
-(def ^:dynamic *learning-rate* 0.00001)
+(def ^:dynamic *learning-rate* 0.01)
 (def ^:dynamic *weight-random-diff* 0.001)
 
 (def ^:dynamic *report-period* 100)
