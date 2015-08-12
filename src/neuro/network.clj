@@ -28,13 +28,39 @@
   [f nn]
   (let [ws (:weights nn)
         levels (range (count ws))
-        idx (for [l levels, in (range (count (ws l))), out (range (count ((ws l) in)))]
+        idx (for [l levels
+                  in (range (count (ws l)))
+                  out (range (count ((ws l) in)))]
               [l in out])]
     (reduce (fn [ret [l i o]]
               (let [w (weight ret l i o)]
                 (update-weight ret (f w l i o) l i o)))
             nn
             idx)))
+
+(defn- in-weight-vec
+  "あるノードへ入力されるパスの重みを返す"
+  [nn level node]
+  (let [in (nth (:nodes nn) level)]
+    (mapv (fn [i] (weight nn level i node))
+          (range in))))
+
+(defn- reduce-1-nn
+  "ひとつの層について関数を適用する"
+  [f xs nn level out]
+  (mapv (fn [node] (f xs (in-weight-vec nn level node)))
+        (range out)))
+
+(defn reduce-nn
+  "各層ごとに関数を適用して値を集計する
+  (f x-seq weight-seq)"
+  [f xv nn]
+  (let [ns (seq-by-2-items (:nodes nn))]
+    (first
+     (reduce (fn [[xs level] [in out]]
+               [(reduce-1-nn f xs nn level out) (inc level)])
+             [xv 0]
+             ns))))
 
 
 
@@ -55,10 +81,7 @@
   (gen-num-vec #(gen-num-vec init y) x))
 
 (defn- seq-by-2-items [s]
-  (loop [ret [], cur s, next (rest s)]
-    (if (and (not-empty cur) (not-empty next))
-      (recur (conj ret [(first cur) (first next)]) (rest cur) (rest next))
-      ret)))
+  (map vector s (rest s)))
 
 (defn- update-at [v idx val]
   (apply vector
