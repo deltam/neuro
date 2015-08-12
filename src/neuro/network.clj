@@ -23,7 +23,7 @@
         updated (update-matrix-at (w-mat level) in-node out-node w)]
     (assoc nn :weights (update-at w-mat level updated))))
 
-(defn map-weights
+(defn map-nn
   "重みの更新を一括して行なう"
   [f nn]
   (let [ws (:weights nn)

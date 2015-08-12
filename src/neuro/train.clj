@@ -3,7 +3,6 @@
             [neuro.network :as nw]
             [clojure.data.generators :as gr]))
 
-(declare train-next)
 
 (def ^:dynamic *weight-inc-val* 0.00001)
 (def ^:dynamic *learning-rate* 0.01)
@@ -12,7 +11,17 @@
 (def ^:dynamic *report-period* 100)
 
 
-(defn train [init-nn dfn w-updater dataset terminate-f]
+(defn- train-next [nn dfn w-updater dataset]
+  (let [nn1 (w-updater nn dfn dataset)
+        d1 (dfn nn1 dataset)
+        nn2 (w-updater nn dfn dataset)
+        d2 (dfn nn2 dataset)]
+    (cond (<= d1 d2) nn1
+          (>  d1 d2) nn2)))
+
+(defn train
+  "NNの学習を行なう"
+  [init-nn dfn w-updater dataset terminate-f]
   (loop [cur-nn init-nn, diff (dfn init-nn dataset) , cnt 0]
     (let [next (train-next cur-nn dfn w-updater dataset)
           next-diff (dfn next dataset)]
@@ -21,15 +30,6 @@
       (if (terminate-f diff next-diff)
         cur-nn
         (recur next, next-diff, (inc cnt))))))
-
-(defn train-next [nn dfn w-updater dataset]
-  (let [nn1 (w-updater nn dfn dataset)
-        diff1 (dfn nn1 dataset)
-        nn2 (w-updater nn dfn dataset)
-        diff2 (dfn nn2 dataset)]
-    (cond (<= diff1 diff2) nn1
-          (>  diff1 diff2) nn2)))
-
 
 
 (defn diff-fn-2class
@@ -65,9 +65,9 @@
 (defn weight-gradient
   "勾配降下法で重みを更新する"
   [nn dfn dataset]
-  (nw/map-weights (fn [w l i o]
-                    (update-by-gradient w nn dfn dataset l i o))
-                  nn))
+  (nw/map-nn (fn [w l i o]
+               (update-by-gradient w nn dfn dataset l i o))
+             nn))
 
 
 
@@ -83,27 +83,10 @@
   "重みをランダムに更新する"
   [nn dfn dataset]
   (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
-    (nw/map-weights (fn [w l i o] (rand-add w))
-                    nn)))
+    (nw/map-nn (fn [w l i o] (rand-add w))
+               nn)))
 
 
-;(defn diff-fn-regression
-;  "回帰解析用の誤差関数"
-;  [nn dataset]
-;  (* 0.5
-;     (square-sum
-;      (for [{x :x, ans :ans} dataset
-;            :let [v-seq (core/nn-calc nn x)]]
-;        (apply +
-;               (map (fn [v d] (- v d)) v-seq ans))))))
-;
-;(defn- square [x]
-;  (* x x))
-;
-;(defn- square-sum [x-seq]
-;  (apply +
-;         (map square x-seq)))
-;
 
 
 (comment
@@ -180,7 +163,7 @@
 (time
  (def nn2
    (train train-nn-2class diff-fn-2class weight-randomize traindata-2class
-          (fn [_ d] (< d 0.5333))))
+          (fn [_ d] (< d 0.1))))
 )
 
 (defn nn-test [nn dataset ans ans-test]
