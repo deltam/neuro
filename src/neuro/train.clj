@@ -11,20 +11,20 @@
 (def ^:dynamic *report-period* 100)
 
 
-(defn- train-next [nn dfn w-updater dataset]
-  (let [nn1 (w-updater nn dfn dataset)
-        d1 (dfn nn1 dataset)
-        nn2 (w-updater nn dfn dataset)
-        d2 (dfn nn2 dataset)]
+(defn- train-next [nn efn w-updater dataset]
+  (let [nn1 (w-updater nn efn dataset)
+        d1 (efn nn1 dataset)
+        nn2 (w-updater nn efn dataset)
+        d2 (efn nn2 dataset)]
     (cond (<= d1 d2) nn1
           (>  d1 d2) nn2)))
 
 (defn train
   "NNの学習を行なう"
-  [init-nn dfn w-updater dataset terminate-f]
-  (loop [cur-nn init-nn, diff (dfn init-nn dataset) , cnt 0]
-    (let [next (train-next cur-nn dfn w-updater dataset)
-          next-diff (dfn next dataset)]
+  [init-nn efn w-updater dataset terminate-f]
+  (loop [cur-nn init-nn, diff (efn init-nn dataset) , cnt 0]
+    (let [next (train-next cur-nn efn w-updater dataset)
+          next-diff (efn next dataset)]
       (if (zero? (mod cnt *report-period*))
         (println cnt " now diff: " next-diff))
       (if (terminate-f diff next-diff)
@@ -32,16 +32,16 @@
         (recur next, next-diff, (inc cnt))))))
 
 
-(defn diff-fn-2class
+(defn err-fn-2class
   "2値分類の誤差関数 nn の出力層は1ニューロン"
   [nn dataset]
   (let [samples (count dataset)
-        diff-sum (apply +
-                        (for [{x :x, [d] :ans} dataset
-                              :let [[y] (core/nn-calc nn x)]]
-                          (+ (* d (Math/log y))
-                             (* (- 1.0 d) (Math/log (- 1.0 y))))))]
-    (/ (* -1 diff-sum) samples)))
+        er (apply +
+                  (for [{x :x, [d] :ans} dataset
+                        :let [[y] (core/nn-calc nn x)]]
+                    (+ (* d (Math/log y))
+                       (* (- 1.0 d) (Math/log (- 1.0 y))))))]
+    (/ (* -1 er) samples)))
 
 
 
@@ -49,24 +49,24 @@
 
 (defn- gradient
   "nnの微小増分の傾きを返す"
-  [nn dfn dataset level in out]
+  [nn efn dataset level in out]
   (let [w (nw/weight nn level in out)
-        nn-inc (nw/update-weight nn (+ w *weight-inc-val*) level in out)
-        y (dfn nn dataset)
-        y-inc (dfn nn-inc dataset)]
-    (/ (- y-inc y) *weight-inc-val*)))
+        nn2 (nw/update-weight nn (+ w *weight-inc-val*) level in out)
+        y (efn nn dataset)
+        y2 (efn nn2 dataset)]
+    (/ (- y2 y) *weight-inc-val*)))
 
 (defn- update-by-gradient
   "重みを勾配に従って更新した値を返す"
-  [w nn dfn dataset level in out]
-  (let [grd (gradient nn dfn dataset level in out)]
+  [w nn efn dataset level in out]
+  (let [grd (gradient nn efn dataset level in out)]
     (- w (* *learning-rate* grd))))
 
 (defn weight-gradient
   "勾配降下法で重みを更新する"
-  [nn dfn dataset]
+  [nn efn dataset]
   (nw/map-nn (fn [w l i o]
-               (update-by-gradient w nn dfn dataset l i o))
+               (update-by-gradient w nn efn dataset l i o))
              nn))
 
 
@@ -81,7 +81,7 @@
 
 (defn weight-randomize
   "重みをランダムに更新する"
-  [nn dfn dataset]
+  [nn efn dataset]
   (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
     (nw/map-nn (fn [w l i o] (rand-add w))
                nn)))
@@ -91,14 +91,8 @@
 
 (comment
 
-(def nn-2class (let [nn (nw/gen-nn :rand 3 4  1)]
-                 ;; biasノードの初期値は0
-                 (nw/map-weights (fn [w l i o]
-                                   (if (or (and (= l 0) (= i 2))
-                                           (and (= l 1) (= i 3)))
-                                      0.0
-                                     w))
-                                 nn)))
+(def nn-2class (nw/gen-nn :rand 3 6 1))
+
 
 (def traindata-2class [{:x [2 5 1] :ans [0]}
                        {:x [3 2 1] :ans [0]}
@@ -155,16 +149,16 @@
 
                        ])
 (time
- (def train-nn-2class
-   (train nn-2class diff-fn-2class weight-gradient traindata-2class
-          #(< (Math/abs (- %1 %2)) 0.00001)))
- )
+ (def nn-g
+   (train nn-2class err-fn-2class weight-gradient traindata-2class
+          (fn [_ d] (< d 0.1)))
+   ))
 
 (time
- (def nn2
-   (train train-nn-2class diff-fn-2class weight-randomize traindata-2class
-          (fn [_ d] (< d 0.1))))
-)
+ (def nn-r
+   (train nn-2class err-fn-2class weight-randomize traindata-2class
+          (fn [_ d] (< d 0.1)))
+   ))
 
 (defn nn-test [nn dataset ans ans-test]
   (let [t (map (fn [x] (core/nn-calc nn x))
@@ -174,8 +168,10 @@
     (/ (reduce (fn [r [w]] (if (ans-test w) (inc r) r)) 0.0 t)
        cnt)))
 
-(nn-test nn2 traindata-2class [0] #(< % 0.5))
-(nn-test nn2 traindata-2class [1] #(> % 0.5))
+(nn-test nn-g traindata-2class [0] #(< % 0.5))
+(nn-test nn-g traindata-2class [1] #(> % 0.5))
+(nn-test nn-r traindata-2class [0] #(< % 0.5))
+(nn-test nn-r traindata-2class [1] #(> % 0.5))
 
 
 (defn plot-classify
