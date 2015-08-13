@@ -9,6 +9,7 @@
 (def ^:dynamic *weight-random-diff* 0.001)
 
 (def ^:dynamic *report-period* 100)
+(def ^:dynamic *mini-batch-size* 10)
 
 
 (defn- train-next [nn efn w-updater dataset]
@@ -30,6 +31,19 @@
       (if (terminate-f diff next-diff)
         cur-nn
         (recur next, next-diff, (inc cnt))))))
+
+(defn train-sgd
+  "訓練データをシャッフルしてミニバッチ方式で学習する"
+  [init-nn efn dataset terminate-f]
+  (let [batch-data (partition *mini-batch-size* (shuffle dataset))]
+    (loop [idx (dec (count batch-data)), nn init-nn]
+      (if (< idx 0)
+          (do (println "train finish!!!")
+              nn)
+          (do  (printf "batch start %d\n" idx)
+               (println nn)
+               (recur (dec idx) (train nn efn weight-gradient (nth batch-data idx) terminate-f)))))))
+
 
 
 (defn err-fn-2class
