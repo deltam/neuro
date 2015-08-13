@@ -1,6 +1,6 @@
 (ns neuro.func)
 
-(defn retified-linear-func
+(defn retified-linear-unit
   "正規化線形関数"
   [x]
   (max x 0))

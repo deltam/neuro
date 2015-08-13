@@ -6,29 +6,29 @@
 (defn gen-nn
   "多層ニューラルネットを定義する"
   [init & level-nodes]
-  {:nodes (apply vector level-nodes)
+  {:nodes (apply vector layer-nodes)
    :weights (apply vector
-                   (for [[in out] (seq-by-2-items level-nodes)]
+                   (for [[in out] (seq-by-2-items layer-nodes)]
                      (gen-num-matrix init in out)))
    :func :logistic})
 
-(defn weight [nn level in out]
-  (let [w-mat ((:weights nn) level)]
+(defn weight [nn layer in out]
+  (let [w-mat ((:weights nn) layer)]
     ((w-mat in) out)))
 
 (defn update-weight
   "重みを更新する"
-  [nn w level in-node out-node]
+  [nn w layer in-node out-node]
   (let [w-mat (:weights nn)
-        updated (update-matrix-at (w-mat level) in-node out-node w)]
-    (assoc nn :weights (update-at w-mat level updated))))
+        updated (update-matrix-at (w-mat layer) in-node out-node w)]
+    (assoc nn :weights (update-at w-mat layer updated))))
 
 (defn map-nn
   "重みの更新を一括して行なう"
   [f nn]
   (let [ws (:weights nn)
-        levels (range (count ws))
-        idx (for [l levels
+        layers (range (count ws))
+        idx (for [l layers
                   in (range (count (ws l)))
                   out (range (count ((ws l) in)))]
               [l in out])]
@@ -40,15 +40,15 @@
 
 (defn- in-weight-vec
   "あるノードへ入力されるパスの重みを返す"
-  [nn level node]
-  (let [in (nth (:nodes nn) level)]
-    (mapv (fn [i] (weight nn level i node))
+  [nn layer node]
+  (let [in (nth (:nodes nn) layer)]
+    (mapv (fn [i] (weight nn layer i node))
           (range in))))
 
 (defn- reduce-1-nn
   "ひとつの層について関数を適用する"
-  [f xs nn level out]
-  (mapv (fn [node] (f xs (in-weight-vec nn level node)))
+  [f xs nn layer out]
+  (mapv (fn [node] (f xs (in-weight-vec nn layer node)))
         (range out)))
 
 (defn reduce-nn
@@ -57,8 +57,8 @@
   [f xv nn]
   (let [ns (seq-by-2-items (:nodes nn))]
     (first
-     (reduce (fn [[xs level] [in out]]
-               [(reduce-1-nn f xs nn level out) (inc level)])
+     (reduce (fn [[xs layer] [in out]]
+               [(reduce-1-nn f xs nn layer out) (inc layer)])
              [xv 0]
              ns))))
 

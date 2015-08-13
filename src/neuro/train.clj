@@ -64,16 +64,16 @@
 (defn- gradient
   "nnの微小増分の傾きを返す"
   [nn efn dataset level in out]
-  (let [w (nw/weight nn level in out)
-        nn2 (nw/update-weight nn (+ w *weight-inc-val*) level in out)
+  (let [w (nw/weight nn layer in out)
+        nn2 (nw/update-weight nn (+ w *weight-inc-val*) layer in out)
         y (efn nn dataset)
         y2 (efn nn2 dataset)]
     (/ (- y2 y) *weight-inc-val*)))
 
 (defn- update-by-gradient
   "重みを勾配に従って更新した値を返す"
-  [w nn efn dataset level in out]
-  (let [grd (gradient nn efn dataset level in out)]
+  [w nn efn dataset layer in out]
+  (let [grd (gradient nn efn dataset layer in out)]
     (- w (* *learning-rate* grd))))
 
 (defn weight-gradient
