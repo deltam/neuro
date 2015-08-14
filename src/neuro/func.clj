@@ -1,5 +1,10 @@
 (ns neuro.func)
 
+(defn dict [name]
+  (condp = name
+        :relu retified-linear-unit
+        :logistic logistic-func))
+
 (defn retified-linear-unit
   "正規化線形関数"
   [x]
