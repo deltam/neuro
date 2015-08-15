@@ -5,7 +5,7 @@
 
 (defn gen-nn
   "多層ニューラルネットを定義する"
-  [init & level-nodes]
+  [init & layer-nodes]
   {:nodes (apply vector layer-nodes)
    :weights (apply vector
                    (for [[in out] (seq-by-2-items layer-nodes)]

@@ -32,6 +32,7 @@
         cur-nn
         (recur next, next-diff, (inc cnt))))))
 
+(declare weight-gradient)
 (defn train-sgd
   "訓練データをシャッフルしてミニバッチ方式で学習する"
   [init-nn efn dataset terminate-f]
@@ -63,7 +64,7 @@
 
 (defn- gradient
   "nnの微小増分の傾きを返す"
-  [nn efn dataset level in out]
+  [nn efn dataset layer in out]
   (let [w (nw/weight nn layer in out)
         nn2 (nw/update-weight nn (+ w *weight-inc-val*) layer in out)
         y (efn nn dataset)
