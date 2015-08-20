@@ -8,9 +8,10 @@
 (def ^:dynamic *learning-rate* 0.01)
 (def ^:dynamic *weight-random-diff* 0.001)
 
-(def ^:dynamic *report-period* 100)
+(def ^:dynamic *report-period* 10)
 (def ^:dynamic *mini-batch-size* 10)
 
+(def +train-value-vec+ (atom []))
 
 (defn- train-next [nn efn w-updater dataset]
   (let [nn1 (w-updater nn efn dataset)
@@ -27,7 +28,7 @@
     (let [next (train-next cur-nn efn w-updater dataset)
           next-diff (efn next dataset)]
       (if (zero? (mod cnt *report-period*))
-        (println cnt " now diff: " next-diff))
+        (swap! +train-value-vec+ conj next-diff))
       (if (terminate-f diff next-diff)
         cur-nn
         (recur next, next-diff, (inc cnt))))))
