@@ -1,7 +1,7 @@
 (ns neuro.network
   (:require [clojure.data.generators :as gr]))
 
-(declare gen-num-matrix seq-by-2-items update-at update-matrix-at)
+(declare gen-num-vec gen-num-matrix seq-by-2-items update-at update-matrix-at)
 
 (defn gen-nn
   "多層ニューラルネットを定義する"
@@ -10,6 +10,8 @@
    :weights (apply vector
                    (for [[in out] (seq-by-2-items layer-nodes)]
                      (gen-num-matrix init in out)))
+   :bias (apply vector
+                (mapv #(gen-num-vec init %) (rest layer-nodes)))
    :func :logistic})
 
 (defn weight [nn layer in out]
@@ -45,10 +47,14 @@
     (mapv (fn [i] (weight nn layer i node))
           (range in))))
 
+(defn- get-bias [nn layer node]
+  (let [bias-seq (:bias nn)]
+    (nth (nth bias-seq layer) node)))
+
 (defn- reduce-1-nn
   "ひとつの層について関数を適用する"
   [f xs nn layer out]
-  (mapv (fn [node] (f xs (in-weight-vec nn layer node)))
+  (mapv (fn [node] (f xs (in-weight-vec nn layer node) (get-bias nn layer node)))
         (range out)))
 
 (defn reduce-nn
@@ -106,6 +112,8 @@
                    [[0.0]
                     [0.0]]
                    ]
+         :bias [[0.1 0.2]
+                [0.3]]
          :func :logistic})
 
 )
