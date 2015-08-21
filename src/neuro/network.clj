@@ -9,9 +9,7 @@
   {:nodes (apply vector layer-nodes)
    :weights (apply vector
                    (for [[in out] (seq-by-2-items layer-nodes)]
-                     (gen-num-matrix init in out)))
-   :bias (apply vector
-                (mapv #(gen-num-vec init %) (rest layer-nodes)))
+                     (gen-num-matrix init (inc in) out)))
    :func :logistic})
 
 (defn weight [nn layer in out]
@@ -43,23 +41,19 @@
 (defn- in-weight-vec
   "あるノードへ入力されるパスの重みを返す"
   [nn layer node]
-  (let [in (nth (:nodes nn) layer)]
+  (let [in (inc (nth (:nodes nn) layer))]
     (mapv (fn [i] (weight nn layer i node))
           (range in))))
-
-(defn- get-bias [nn layer node]
-  (let [bias-seq (:bias nn)]
-    (nth (nth bias-seq layer) node)))
 
 (defn- reduce-1-nn
   "ひとつの層について関数を適用する"
   [f xs nn layer out]
-  (mapv (fn [node] (f xs (in-weight-vec nn layer node) (get-bias nn layer node)))
+  (mapv (fn [node] (f xs (in-weight-vec nn layer node)))
         (range out)))
 
 (defn reduce-nn
   "各層ごとに関数を適用して値を集計する
-  (f x-seq weight-seq)"
+  (f x-seq weight-seq bias)"
   [f xv nn]
   (let [ns (seq-by-2-items (:nodes nn))]
     (first
@@ -106,14 +100,14 @@
 
 (def nn {:nodes [3 2 1]
          :weights [
-                   [[0.0 0.0]
+                   [[0.0 0.0] ; bias
+                    [0.0 0.0]
                     [0.0 0.0]
                     [0.0 0.0]]
-                   [[0.0]
+                   [[0.0]     ; bias
+                    [0.0]
                     [0.0]]
                    ]
-         :bias [[0.1 0.2]
-                [0.3]]
          :func :logistic})
 
 )
