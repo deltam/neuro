@@ -11,6 +11,5 @@
 (defn nn-calc
   "多層ニューラルネットの計算をする"
   [nn x-seq]
-  (let [xs-bias (conj xs 1.0)
-        node-f (fn [xs ws] (nn-calc-node (:func nn) xs-bias ws))]
+  (let [node-f (fn [xs ws] (nn-calc-node (:func nn) (into [1.0] xs) ws))]
     (nw/reduce-nn node-f x-seq nn)))
