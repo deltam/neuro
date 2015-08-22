@@ -11,8 +11,13 @@
 (def ^:dynamic *report-period* 1)
 (def ^:dynamic *mini-batch-size* 10)
 
-(def +train-value-vec+ (atom []))
+(def +train-err-vec+ (atom []))
+(def +test-err-vec+ (atom []))
 (def +learning-rate+ (atom 8.0))
+
+(defn train-init []
+  (reset! +train-err-vec+ [])
+  (reset! +test-err-vec+ []))
 
 (defn- train-next [nn efn w-updater dataset]
   (let [nn1 (w-updater nn efn dataset)
@@ -24,27 +29,29 @@
 
 (defn train
   "NNの学習を行なう"
-  [init-nn efn w-updater dataset terminate-f]
-  (loop [cur-nn init-nn, diff (efn init-nn dataset) , cnt 0]
+  [init-nn efn w-updater dataset testset terminate-f]
+  (loop [cur-nn init-nn, err (efn init-nn dataset) , cnt 0]
     (let [next (train-next cur-nn efn w-updater dataset)
-          next-diff (efn next dataset)]
+          train-err (efn next dataset)
+          test-err (efn next testset)]
       (if (zero? (mod cnt *report-period*))
-        (swap! +train-value-vec+ conj next-diff))
-      (if (terminate-f diff next-diff)
+        (do (swap! +train-err-vec+ conj train-err)
+            (swap! +test-err-vec+ conj test-err)))
+      (if (terminate-f err train-err)
         cur-nn
-        (recur next, next-diff, (inc cnt))))))
+        (recur next, train-err, (inc cnt))))))
 
 (declare weight-gradient)
 (defn train-sgd
   "訓練データをシャッフルしてミニバッチ方式で学習する"
-  [init-nn efn dataset terminate-f]
+  [init-nn efn dataset testset terminate-f]
   (let [batch-data (partition *mini-batch-size* (shuffle dataset))]
     (loop [idx (dec (count batch-data)), nn init-nn]
       (if (< idx 0)
           (do (println "train finish!!!")
               nn)
           (do (println "batch start " idx)
-              (recur (dec idx) (train nn efn weight-gradient (nth batch-data idx) terminate-f)))))))
+              (recur (dec idx) (train nn efn weight-gradient (nth batch-data idx) testset terminate-f)))))))
 
 
 
