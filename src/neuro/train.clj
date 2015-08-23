@@ -14,10 +14,12 @@
 (def +train-err-vec+ (atom []))
 (def +test-err-vec+ (atom []))
 (def +learning-rate+ (atom 8.0))
+(def +go-next-batch+ (atom false))
 
 (defn train-init []
   (reset! +train-err-vec+ [])
-  (reset! +test-err-vec+ []))
+  (reset! +test-err-vec+ [])
+  (reset! +go-next-batch+ false))
 
 (defn- train-next [nn efn w-updater dataset]
   (let [nn1 (w-updater nn efn dataset)
@@ -37,8 +39,9 @@
       (if (zero? (mod cnt *report-period*))
         (do (swap! +train-err-vec+ conj train-err)
             (swap! +test-err-vec+ conj test-err)))
-      (if (terminate-f err train-err)
-        cur-nn
+      (if (or @+go-next-batch+ (terminate-f err train-err))
+        (do (reset! +go-next-batch+ false)
+            cur-nn)
         (recur next, train-err, (inc cnt))))))
 
 (declare weight-gradient)
