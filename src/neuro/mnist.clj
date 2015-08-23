@@ -56,21 +56,8 @@
       {:label label
        :image image})))
 
-
-(comment
-
-(require '[neuro.mnist :as mn])
-(require '[neuro.train :as tr])
-(require '[neuro.network :as nw])
-
-(def mnist-ds (mn/dataset))
-
-(def traindata-8 (map (fn [{num :label, img :image}] {:x (apply vector img), :ans[(if (= num 8) 1.0 0.0)]})
-                  mnist-ds))
-
-(def nn (nw/gen-nn :rand 784 200 1))
-
-(tr/train nn tr/diff-fn-2class tr/weight-randomize traindata-8 (fn [_ d] (< d 0.8)))
-
-
-)
+(defn traindata-2class [digit]
+  (let [ mnist-ds (dataset)]
+    (map (fn [{num :label, img :image}]
+           {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
+         mnist-ds)))
