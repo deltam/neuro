@@ -1,7 +1,9 @@
-(ns neuro.mnist)
+(ns neuro.mnist.data)
 
 (def ^:dynamic *train-images-filename* "train-images-idx3-ubyte")
 (def ^:dynamic *train-labels-filename* "train-labels-idx1-ubyte")
+(def ^:dynamic *test-images-filename* "t10k-images-idx3-ubyte")
+(def ^:dynamic *test-labels-filename* "t10k-labels-idx1-ubyte")
 
 (defn read-as-byte-buf [filename]
   (with-open [fis (java.io.FileInputStream. filename)]
@@ -47,17 +49,23 @@
     (for [cnt (range (:count meta))]
       (.get byte-buf (+ offset cnt)))))
 
-(defn dataset []
-  (let [image-bytes (read-as-byte-buf *train-images-filename*)
+(defn dataset [images-filename labels-filename]
+  (let [image-bytes (read-as-byte-buf images-filename)
         images (bytes->images image-bytes)
-        label-bytes (read-as-byte-buf *train-labels-filename*)
+        label-bytes (read-as-byte-buf labels-filename)
         labels (bytes->labels label-bytes)]
     (for [[image label] (map vector images labels)]
       {:label label
        :image image})))
 
 (defn traindata-2class [digit]
-  (let [ mnist-ds (dataset)]
+  (let [mnist-ds (dataset *train-images-filename* *train-labels-filename*)]
+    (map (fn [{num :label, img :image}]
+           {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
+         mnist-ds)))
+
+(defn testdata-2class [digit]
+  (let [mnist-ds (dataset *test-images-filename* *test-labels-filename*)]
     (map (fn [{num :label, img :image}]
            {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
          mnist-ds)))
