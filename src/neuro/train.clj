@@ -10,6 +10,7 @@
 
 (def ^:dynamic *report-period* 1)
 (def ^:dynamic *mini-batch-size* 10)
+(def ^:dynamic *momentum-param* 0.6)
 
 (def +train-err-vec+ (atom []))
 (def +test-err-vec+ (atom []))
@@ -21,28 +22,29 @@
   (reset! +test-err-vec+ [])
   (reset! +go-next-batch+ false))
 
-(defn- train-next [nn efn w-updater dataset]
-  (let [nn1 (w-updater nn efn dataset)
-        d1 (efn nn1 dataset)
-        nn2 (w-updater nn efn dataset)
-        d2 (efn nn2 dataset)]
-    (cond (<= d1 d2) nn1
-          (>  d1 d2) nn2)))
+(defn- momentum
+  "モメンタム項の計算"
+  [pre-nn cur-nn nn]
+  (nw/map-nn (fn [w l i o]
+               (let [dw ( - (nw/weight cur-nn l i o)
+                            (nw/weight pre-nn l i o))]
+                 (+ w (* *momentum-param* dw))))
+             nn))
 
 (defn train
   "NNの学習を行なう"
   [init-nn efn w-updater dataset testset terminate-f]
-  (loop [cur-nn init-nn, err (efn init-nn dataset) , cnt 0]
-    (let [next (train-next cur-nn efn w-updater dataset)
-          train-err (efn next dataset)
-          test-err (efn next testset)]
+  (loop [pre-nn init-nn, cur-nn init-nn, err (efn init-nn dataset) , cnt 0]
+    (let [next-nn (momentum pre-nn cur-nn (w-updater cur-nn efn dataset))
+          train-err (efn next-nn dataset)
+          test-err (efn next-nn testset)]
       (if (zero? (mod cnt *report-period*))
         (do (swap! +train-err-vec+ conj train-err)
             (swap! +test-err-vec+ conj test-err)))
       (if (or @+go-next-batch+ (terminate-f err train-err))
         (do (reset! +go-next-batch+ false)
             cur-nn)
-        (recur next, train-err, (inc cnt))))))
+        (recur cur-nn, next-nn, train-err, (inc cnt))))))
 
 (declare weight-gradient)
 (defn train-sgd
