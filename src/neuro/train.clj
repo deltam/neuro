@@ -22,6 +22,13 @@
   (reset! +test-err-vec+ [])
   (reset! +go-next-batch+ false))
 
+(defn- monitoring
+  "学習過程をレポートする"
+  [epoc train-err test-err]
+  (if (zero? (mod epoc *report-period*))
+    (do (swap! +train-err-vec+ conj train-err)
+        (swap! +test-err-vec+ conj test-err))))
+
 (defn- momentum
   "モメンタム項の計算"
   [pre-nn cur-nn nn]
@@ -34,17 +41,15 @@
 (defn train
   "NNの学習を行なう"
   [init-nn efn w-updater dataset testset terminate-f]
-  (loop [pre-nn init-nn, cur-nn init-nn, err (efn init-nn dataset) , cnt 0]
+  (loop [pre-nn init-nn, cur-nn init-nn, err (efn init-nn dataset) , epoc 0]
     (let [next-nn (momentum pre-nn cur-nn (w-updater cur-nn efn dataset))
           train-err (efn next-nn dataset)
           test-err (efn next-nn testset)]
-      (if (zero? (mod cnt *report-period*))
-        (do (swap! +train-err-vec+ conj train-err)
-            (swap! +test-err-vec+ conj test-err)))
+      (monitoring epoc train-err test-err)
       (if (or @+go-next-batch+ (terminate-f err train-err))
         (do (reset! +go-next-batch+ false)
             cur-nn)
-        (recur cur-nn, next-nn, train-err, (inc cnt))))))
+        (recur cur-nn, next-nn, train-err, (inc epoc))))))
 
 (declare weight-gradient)
 (defn train-sgd
