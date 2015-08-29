@@ -33,8 +33,8 @@
   "モメンタム項の計算"
   [pre-nn cur-nn nn]
   (nw/map-nn (fn [w l i o]
-               (let [dw ( - (nw/weight cur-nn l i o)
-                            (nw/weight pre-nn l i o))]
+               (let [dw ( - (nw/wget cur-nn l i o)
+                            (nw/wget pre-nn l i o))]
                  (+ w (* *momentum-param* dw))))
              nn))
 

@@ -12,13 +12,13 @@
                      (gen-num-matrix init (inc in) out)))
    :func :logistic})
 
-(defn weight [nn layer in out]
+(defn wget [nn layer in out]
   (let [w-mat ((:weights nn) layer)]
     ((w-mat in) out)))
 
-(defn update-weight
+(defn wput
   "重みを更新する"
-  [nn w layer in-node out-node]
+  [nn layer in-node out-node w]
   (let [w-mat (:weights nn)
         updated (update-matrix-at (w-mat layer) in-node out-node w)]
     (assoc nn :weights (update-at w-mat layer updated))))
@@ -33,8 +33,8 @@
                   out (range (count ((ws l) in)))]
               [l in out])]
     (reduce (fn [ret [l i o]]
-              (let [w (weight ret l i o)]
-                (update-weight ret (f w l i o) l i o)))
+              (let [w (wget ret l i o)]
+                (wput ret l i o (f w l i o))))
             nn
             idx)))
 
@@ -42,7 +42,7 @@
   "あるノードへ入力されるパスの重みを返す"
   [nn layer node]
   (let [in (inc (nth (:nodes nn) layer))]
-    (mapv (fn [i] (weight nn layer i node))
+    (mapv (fn [i] (wget nn layer i node))
           (range in))))
 
 (defn- reduce-1-nn
