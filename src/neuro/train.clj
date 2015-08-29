@@ -14,7 +14,7 @@
 
 (def +train-err-vec+ (atom []))
 (def +test-err-vec+ (atom []))
-(def +learning-rate+ (atom 8.0))
+(def +learning-rate+ (atom 3.0))
 (def +go-next-batch+ (atom false))
 
 (defn train-init []
@@ -97,7 +97,7 @@
   "勾配降下法で重みを更新する"
   [nn efn dataset]
   (nw/map-nn (fn [w l i o]
-               (let [nn2 (nw/wput nn (+ w *weight-inc-val*) l i o)]
+               (let [nn2 (nw/wput nn l i o (+ w *weight-inc-val*))]
                  (update-by-gradient w nn nn2 efn dataset)))
              nn))
 
