@@ -16,8 +16,8 @@
 
 
 ## 説明文書
-[機械学習 - 雑にニューラルネットを実装して二値分類してみた - Qiita](http://qiita.com/deltam/items/355a9b23dea152df2617)
-[機械学習 - ニューラルネットの学習過程を雑にグラフ化してみた - Qiita](http://qiita.com/deltam/items/fa78f32670b8ee3cc431)
+* [機械学習 - 雑にニューラルネットを実装して二値分類してみた - Qiita](http://qiita.com/deltam/items/355a9b23dea152df2617)
+* [機械学習 - ニューラルネットの学習過程を雑にグラフ化してみた - Qiita](http://qiita.com/deltam/items/fa78f32670b8ee3cc431)
 
 
 
