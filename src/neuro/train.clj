@@ -97,7 +97,7 @@
   "勾配降下法で重みを更新する"
   [nn efn dataset]
   (nw/map-nn (fn [w l i o]
-               (let [nn2 (nw/update-weight nn (+ w *weight-inc-val*) l i o)]
+               (let [nn2 (nw/wput nn (+ w *weight-inc-val*) l i o)]
                  (update-by-gradient w nn nn2 efn dataset)))
              nn))
 
