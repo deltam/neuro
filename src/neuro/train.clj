@@ -16,18 +16,22 @@
 (def +test-err-vec+ (atom []))
 (def +learning-rate+ (atom 3.0))
 (def +go-next-batch+ (atom false))
+(def +now-nn+ (atom nil))
+
 
 (defn train-init []
   (reset! +train-err-vec+ [])
   (reset! +test-err-vec+ [])
-  (reset! +go-next-batch+ false))
+  (reset! +go-next-batch+ false)
+  (reset! +now-nn+ nil))
 
 (defn- monitoring
   "学習過程をレポートする"
-  [epoc train-err test-err]
+  [epoc train-err test-err nn]
   (if (zero? (mod epoc *report-period*))
     (do (swap! +train-err-vec+ conj train-err)
-        (swap! +test-err-vec+ conj test-err))))
+        (swap! +test-err-vec+ conj test-err)
+        (reset! +now-nn+ nn))))
 
 (defn- momentum
   "モメンタム項の計算"
@@ -45,7 +49,7 @@
     (let [next-nn (momentum pre-nn cur-nn (w-updater cur-nn efn dataset))
           train-err (efn next-nn dataset)
           test-err (efn next-nn testset)]
-      (monitoring epoc train-err test-err)
+      (monitoring epoc train-err test-err next-nn)
       (if (or @+go-next-batch+ (terminate-f err train-err))
         (do (reset! +go-next-batch+ false)
             cur-nn)
