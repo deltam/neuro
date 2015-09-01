@@ -62,6 +62,10 @@
 
                        ])
 
+(def shuffled (shuffle traindata-2class))
+(def testdata (take 5 shuffled))
+(def traindata (drop 0 shuffled))
+
 (def traindata-2class-2
   [{:x [3 2] :ans [0]}
    {:x [4 1] :ans [0]}
