@@ -19,7 +19,7 @@
 (def +now-nn+ (atom nil))
 
 
-(defn train-init []
+(defn init []
   (reset! +train-err-vec+ [])
   (reset! +test-err-vec+ [])
   (reset! +go-next-batch+ false)
@@ -36,7 +36,7 @@
 (defn- momentum
   "モメンタム項の計算"
   [pre-nn cur-nn nn]
-  (nw/map-nn (fn [w l i o]
+  (nw/map-nn (fn [l i o w]
                (let [dw ( - (nw/wget cur-nn l i o)
                             (nw/wget pre-nn l i o))]
                  (+ w (* *momentum-param* dw))))
@@ -100,7 +100,7 @@
 (defn weight-gradient
   "勾配降下法で重みを更新する"
   [nn efn dataset]
-  (nw/map-nn (fn [w l i o]
+  (nw/map-nn (fn [l i o w]
                (let [nn2 (nw/wput nn l i o (+ w *weight-inc-val*))]
                  (update-by-gradient w nn nn2 efn dataset)))
              nn))
@@ -119,5 +119,5 @@
   "重みをランダムに更新する"
   [nn efn dataset]
   (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
-    (nw/map-nn (fn [w l i o] (rand-add w))
+    (nw/map-nn (fn [l i o w] (rand-add w))
                nn)))

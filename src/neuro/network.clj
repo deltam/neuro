@@ -3,64 +3,61 @@
 
 (declare gen-num-vec gen-num-matrix seq-by-2-items update-at update-matrix-at)
 
+(defn gen-layer
+  "NNの1層を作る"
+  [init in out]
+  {:nodes [in out]
+   :weights (gen-num-matrix init (inc in) out)
+   :func :logistic})
+
 (defn gen-nn
   "多層ニューラルネットを定義する"
   [init & layer-nodes]
-  {:nodes (apply vector layer-nodes)
-   :weights (apply vector
-                   (for [[in out] (seq-by-2-items layer-nodes)]
-                     (gen-num-matrix init (inc in) out)))
-   :func :logistic})
+  (let [nodes (seq-by-2-items layer-nodes)]
+    (mapv (fn [[in out]] (gen-layer init in out))
+          nodes)))
 
-(defn wget [nn layer in out]
-  (let [w-mat ((:weights nn) layer)]
+(defn stack-layer
+  "NNに層を追加する"
+  [nn layer]
+  (conj nn layer))
+
+(defn wget
+  "重みを取得する"
+  [nn layer in out]
+  (let [w-mat (:weights (nth nn layer))]
     ((w-mat in) out)))
 
 (defn wput
   "重みを更新する"
   [nn layer in-node out-node w]
-  (let [w-mat (:weights nn)
-        updated (update-matrix-at (w-mat layer) in-node out-node w)]
-    (assoc nn :weights (update-at w-mat layer updated))))
+  (let [cur-layer (nth nn layer)
+        w-mat (:weights cur-layer)
+        updated (update-matrix-at w-mat in-node out-node w)
+        new-layer (assoc cur-layer :weights updated)]
+    (update-at nn layer new-layer)))
+
+
+(defn- mapv-indexed [f coll]
+  (vec (map-indexed f coll)))
+
+(defn- map-matrix-indexed
+  [f mat cols rows]
+  (mapv-indexed (fn [c w-vec]
+                  (mapv-indexed (fn [r w] (f c r w))
+                                w-vec))
+                mat))
 
 (defn map-nn
-  "重みの更新を一括して行なう"
+  "重みの更新を一括して行なう
+  (f l i o w)"
   [f nn]
-  (let [ws (:weights nn)
-        layers (range (count ws))
-        idx (for [l layers
-                  in (range (count (ws l)))
-                  out (range (count ((ws l) in)))]
-              [l in out])]
-    (reduce (fn [ret [l i o]]
-              (let [w (wget ret l i o)]
-                (wput ret l i o (f w l i o))))
-            nn
-            idx)))
-
-(defn- in-weight-vec
-  "あるノードへ入力されるパスの重みを返す"
-  [nn layer node]
-  (let [in (inc (nth (:nodes nn) layer))]
-    (mapv (fn [i] (wget nn layer i node))
-          (range in))))
-
-(defn- reduce-1-nn
-  "ひとつの層について関数を適用する"
-  [f xs nn layer out]
-  (mapv (fn [node] (f xs (in-weight-vec nn layer node)))
-        (range out)))
-
-(defn reduce-nn
-  "各層ごとに関数を適用して値を集計する
-  (f x-seq weight-seq bias)"
-  [f xv nn]
-  (let [ns (seq-by-2-items (:nodes nn))]
-    (first
-     (reduce (fn [[xs layer] [in out]]
-               [(reduce-1-nn f xs nn layer out) (inc layer)])
-             [xv 0]
-             ns))))
+  (mapv-indexed (fn [idx layer]
+                  (let [[in out] (:nodes layer)
+                        w-mat (:weights layer)]
+                    (assoc layer :weights
+                           (map-matrix-indexed (fn [i o w] (f idx i o w)) w-mat (inc in) out))))
+                nn))
 
 
 
@@ -98,16 +95,20 @@
 
 (comment
 
-(def nn {:nodes [3 2 1]
-         :weights [
-                   [[0.0 0.0] ; bias
+(def nn [{:node [3 2]
+          :weights [[0.0 0.0] ; bias
                     [0.0 0.0]
                     [0.0 0.0]
                     [0.0 0.0]]
-                   [[0.0]     ; bias
+          :func :logistic}
+         {:node [2 1]
+          :weights [[0.0]     ; bias
                     [0.0]
                     [0.0]]
-                   ]
-         :func :logistic})
+          :func :logistic}
+         ])
+
+(forward (first nn) [1 2 3])
+;=> [1 1]
 
 )

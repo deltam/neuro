@@ -1,10 +1,10 @@
 
 
-```clj
+```clojure
 
 (comment
 
-(def nn-2class (nw/gen-nn :rand 3 6 1))
+(def nn (nw/gen-nn :rand 3 6 1))
 
 
 (def traindata-2class [{:x [2 5] :ans [0]}
@@ -65,6 +65,13 @@
 (def shuffled (shuffle traindata-2class))
 (def testdata (take 5 shuffled))
 (def traindata (drop 0 shuffled))
+
+(time
+ (def nn2
+   (train-sgd nn err-fn-2class traindata testdata
+          (fn [_ e] (< e 0.2)))
+   ))
+
 
 (def traindata-2class-2
   [{:x [3 2] :ans [0]}
@@ -161,47 +168,14 @@
    {:x [3 6] :ans [1]}
 ])
 
+(def shuffled (shuffle traindata-2class-2))
+(def testdata (take 5 shuffled))
+(def traindata (drop 5 shuffled))
 
 (time
- (def nn-g
-   (train nn-2class err-fn-2class weight-gradient traindata-2class
-          (fn [_ d] (< d 0.1)))
+ (def nn2
+   (train-sgd nn err-fn-2class traindata testdata
+          (fn [_ e] (< e 0.2)))
    ))
 
-(time
- (def nn-r
-   (train nn-2class err-fn-2class weight-randomize traindata-2class
-          (fn [_ d] (< d 0.1)))
-   ))
-
-(defn nn-test [nn dataset ans ans-test]
-  (let [t (map (fn [x] (core/nn-calc nn x))
-               (for [t traindata-2class :when (= (:ans t) ans)]
-                 (:x t)))
-        cnt (count t)]
-    (/ (reduce (fn [r [w]] (if (ans-test w) (inc r) r)) 0.0 t)
-       cnt)))
-
-(nn-test nn-g traindata-2class [0] #(< % 0.5))
-(nn-test nn-g traindata-2class [1] #(> % 0.5))
-(nn-test nn-r traindata-2class [0] #(< % 0.5))
-(nn-test nn-r traindata-2class [1] #(> % 0.5))
-
-
-(defn plot-classify
-  "ランダムな数値を分類させて結果をCSVで出力する"
-  [nn count]
-  (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
-    (let [samples (for [i (range count)
-                        :let [x1 (int (* 10 (gr/double)))
-                              x2 (int (* 10 (gr/double)))
-                              [v] (core/nn-calc nn [x1 x2 1])
-                              ok (if (< 0.5 v) 1 0)]]
-                    [x1 x2 1 ok v])]
-      (doseq [[x1 x2 _ ok _] (sort-by #(nth % 4) samples)]
-        (printf "%d,%d,%d\n" x1 x2 ok)))))
-
-
-
-)
 ```
