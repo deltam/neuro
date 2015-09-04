@@ -28,11 +28,11 @@
 
 ```clojure
 (let [series0 (for [x (range 0 10 0.3) y (range 0 10 0.3)
-                    :let [[a] (neuro.core/nn-calc tr/+now-nn+ [x y])]
+                    :let [[a] (neuro.core/nn-calc @tr/+now-nn+ [x y])]
                     :when (< a 0.5)]
                 [x y])
       series1 (for [x (range 0 10 0.3) y (range 0 10 0.3)
-                    :let [[a] (neuro.core/nn-calc tr/+now-nn+ [x y])]
+                    :let [[a] (neuro.core/nn-calc @tr/+now-nn+ [x y])]
                     :when (>= a 0.5)]
                 [x y])]
   (plot/compose
