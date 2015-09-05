@@ -7,6 +7,7 @@
 (def ^:dynamic *weight-inc-val* 0.00001)
 (def ^:dynamic *learning-rate* 10.0)
 (def ^:dynamic *weight-random-diff* 0.001)
+(def ^:dynamic *weight-decay-param* 0.001)
 
 (def ^:dynamic *report-period* 1)
 (def ^:dynamic *mini-batch-size* 10)
@@ -93,16 +94,18 @@
 
 (defn- update-by-gradient
   "重みを勾配に従って更新した値を返す"
-  [w nn1 nn2 efn dataset]
-  (let [grd (gradient nn1 nn2 efn dataset)]
-    (- w (* @+learning-rate+ grd))))
+  [w nn1 nn2 efn dataset bias?]
+  (let [grd (gradient nn1 nn2 efn dataset)
+        de (if bias? grd
+               (+ grd (* *weight-decay-param* w)))]
+    (- w (* @+learning-rate+ de))))
 
 (defn weight-gradient
   "勾配降下法で重みを更新する"
   [nn efn dataset]
   (nw/map-nn (fn [l i o w]
                (let [nn2 (nw/wput nn l i o (+ w *weight-inc-val*))]
-                 (update-by-gradient w nn nn2 efn dataset)))
+                 (update-by-gradient w nn nn2 efn dataset (zero? i))))
              nn))
 
 
