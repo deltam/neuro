@@ -6,4 +6,5 @@
   :plugins [[cider/cider-nrepl "0.10.0-SNAPSHOT"]
             [lein-gorilla "0.3.4"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.clojure/data.generators "0.1.2"]])
+                 [org.clojure/data.generators "0.1.2"]
+                 [com.taoensso/timbre "4.1.1"]])

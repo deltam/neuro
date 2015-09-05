@@ -1,7 +1,8 @@
 (ns neuro.train
   (:require [neuro.core :as core]
             [neuro.network :as nw]
-            [clojure.data.generators :as gr]))
+            [clojure.data.generators :as gr]
+            [taoensso.timbre.profiling :as pl]))
 
 
 (def ^:dynamic *weight-inc-val* 0.00001)
@@ -47,9 +48,9 @@
   "NNの学習を行なう"
   [init-nn efn w-updater dataset testset terminate-f]
   (loop [pre-nn init-nn, cur-nn init-nn, err (efn init-nn dataset) , epoc 0]
-    (let [next-nn (momentum pre-nn cur-nn (w-updater cur-nn efn dataset))
-          train-err (efn next-nn dataset)
-          test-err (efn next-nn testset)]
+    (let [next-nn (momentum pre-nn cur-nn (pl/p :update (w-updater cur-nn efn dataset)))
+          train-err (pl/p :efn-train (efn next-nn dataset))
+          test-err (pl/p :efn-test (efn next-nn testset))]
       (monitoring epoc train-err test-err next-nn)
       (if (or @+go-next-batch+ (terminate-f err train-err))
         (do (reset! +go-next-batch+ false)
@@ -105,7 +106,7 @@
   [nn efn dataset]
   (nw/map-nn (fn [l i o w]
                (let [nn2 (nw/wput nn l i o (+ w *weight-inc-val*))]
-                 (update-by-gradient w nn nn2 efn dataset (zero? i))))
+                 (pl/p :gradient (update-by-gradient w nn nn2 efn dataset (zero? i)))))
              nn))
 
 
