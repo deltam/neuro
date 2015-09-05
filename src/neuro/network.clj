@@ -5,16 +5,16 @@
 
 (defn gen-layer
   "NNの1層を作る"
-  [init in out]
+  [in out activation-f init]
   {:nodes [in out]
    :weights (gen-num-matrix init (inc in) out)
-   :func :logistic})
+   :func activation-f})
 
 (defn gen-nn
   "多層ニューラルネットを定義する"
   [init & layer-nodes]
   (let [nodes (seq-by-2-items layer-nodes)]
-    (mapv (fn [[in out]] (gen-layer init in out))
+    (mapv (fn [[in out]] (gen-layer in out :logistic init))
           nodes)))
 
 (defn stack-layer
