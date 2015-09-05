@@ -4,7 +4,7 @@
 
 (comment
 
-(def nn (nw/gen-nn :rand 3 6 1))
+(def nn (nw/gen-nn :rand 2 6 1))
 
 
 (def traindata-2class [{:x [2 5] :ans [0]}
@@ -119,6 +119,24 @@
    {:x [6 8] :ans [0]}
    {:x [9 8] :ans [0]}
 
+   {:x [1 1] :ans [0]}
+   {:x [3 1] :ans [0]}
+   {:x [7 7] :ans [0]}
+   {:x [8 7] :ans [0]}
+   {:x [9 7] :ans [0]}
+   {:x [1 5] :ans [0]}
+   {:x [1 9] :ans [0]}
+   {:x [4 8.5] :ans [0]}
+   {:x [3 8.5] :ans [0]}
+   {:x [2 8.5] :ans [0]}
+   {:x [1 8.5] :ans [0]}
+   {:x [6 9] :ans [0]}
+   {:x [7 9] :ans [0]}
+   {:x [8 9] :ans [0]}
+   {:x [9 9] :ans [0]}
+   {:x [5 1] :ans [0]}
+   {:x [5 0.5] :ans [0]}
+
 
    {:x [3 7] :ans [1]}
    {:x [4 4] :ans [1]}
@@ -166,11 +184,27 @@
    {:x [4 6] :ans [1]}
    {:x [4 3] :ans [1]}
    {:x [3 6] :ans [1]}
+
+   {:x [5 4.5] :ans [1]}
+   {:x [3 6.5] :ans [1]}
+   {:x [3 3.5] :ans [1]}
+   {:x [5 4.5] :ans [1]}
+   {:x [4.5 4.5] :ans [1]}
+   {:x [3 4.5] :ans [1]}
+   {:x [4 7.5] :ans [1]}
+   {:x [4.5 8] :ans [1]}
+   {:x [5.5 4.5] :ans [1]}
+   {:x [8 4.5] :ans [1]}
+   {:x [6.3 5] :ans [1]}
+   {:x [5.5 4.5] :ans [1]}
+
 ])
 
 (def shuffled (shuffle traindata-2class-2))
 (def testdata (take 5 shuffled))
 (def traindata (drop 5 shuffled))
+
+(def nn (nw/gen-nn :rand 2 6 2 1))
 
 (time
  (def nn2
