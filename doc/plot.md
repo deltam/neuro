@@ -3,12 +3,12 @@
 (ns jubilant-dawn
   (:require [gorilla-plot.core :as plot])
   (:require [neuro.train :as tr]))
-
+(count @tr/+train-err-vec+)
 (last @tr/+train-err-vec+)
 (let [range 500]
   (plot/compose
-    (plot/list-plot (take-last range @tr/+train-err-vec+) :joined true :plot-size 800 :color :blue)
-    (plot/list-plot (take-last range @tr/+test-err-vec+) :joined true :plot-size 800 :color :red)
+    (plot/list-plot (take-last range @tr/+train-err-vec+) :joined true :plot-size 500 :color :blue)
+    (plot/list-plot (take-last range @tr/+test-err-vec+) :joined true :plot-size 500 :color :red)
 ))
 ```
 
