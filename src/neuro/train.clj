@@ -57,7 +57,7 @@
             cur-nn)
         (recur cur-nn, next-nn, train-err, (inc epoc))))))
 
-(declare weight-gradient)
+(declare weight-gradient weight-gradient-backprop)
 (defn train-sgd
   "訓練データをシャッフルしてミニバッチ方式で学習する"
   [init-nn efn dataset testset terminate-f]
@@ -67,7 +67,7 @@
           (do (println "train finish!!!")
               nn)
           (do (println "batch start " idx)
-              (recur (dec idx) (train nn efn weight-gradient (nth batch-data idx) testset terminate-f)))))))
+              (recur (dec idx) (train nn efn weight-gradient-backprop (nth batch-data idx) testset terminate-f)))))))
 
 
 
@@ -84,7 +84,17 @@
 
 
 
-;; 勾配降下法
+;; 重み更新関数
+
+(defn- update-by-gradient
+  "重みを勾配に従って更新した値を返す"
+  [w grad bias?]
+  (let [de (if bias? grad
+               (+ grad (* *weight-decay-param* w)))]
+    (- w (* @+learning-rate+ de))))
+
+
+;; 数値微分による勾配降下法
 
 (defn- gradient
   "nnの微小増分の傾きを返す"
@@ -93,21 +103,36 @@
         y2 (efn nn2 dataset)]
     (/ (- y2 y1) *weight-inc-val*)))
 
-(defn- update-by-gradient
-  "重みを勾配に従って更新した値を返す"
-  [w nn1 nn2 efn dataset bias?]
-  (let [grd (gradient nn1 nn2 efn dataset)
-        de (if bias? grd
-               (+ grd (* *weight-decay-param* w)))]
-    (- w (* @+learning-rate+ de))))
-
 (defn weight-gradient
   "勾配降下法で重みを更新する"
   [nn efn dataset]
   (nw/map-nn (fn [l i o w]
                (let [nn2 (nw/wput nn l i o (+ w *weight-inc-val*))]
-                 (pl/p :gradient (update-by-gradient w nn nn2 efn dataset (zero? i)))))
+                 (pl/p :gradient
+                       (let [grad (gradient nn nn2 efn dataset)]
+                         (update-by-gradient w grad (zero? i))))))
              nn))
+
+
+;; 誤差逆伝播法による勾配降下法
+
+(defn weight-gradient-backprop
+  "勾配降下法で重みを更新する"
+  [nn efn dataset]
+  (let [samples (count dataset)
+        d-mat-seq (map (fn [{in-seq :x, train-seq :ans}]
+                         (core/backprop nn in-seq train-seq))
+                       dataset)
+        d-mat-sum (reduce (fn [r mat-seq]
+                            (vec (map (fn [m1 m2] (nw/matrix-op + m1 m2))
+                                      r mat-seq)))
+                          (first d-mat-seq) (rest d-mat-seq))
+        d-mat (mapv #(nw/map-matrix-indexed (fn [_ _ w] (/ w samples)) %)
+                    d-mat-sum)]
+    (nw/map-nn (fn [l i o w]
+                 (let [grad (-> d-mat (nth l) (nth i) (nth o))]
+                   (pl/p :gradient (update-by-gradient w grad (zero? i)))))
+             nn)))
 
 
 

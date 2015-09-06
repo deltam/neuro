@@ -38,15 +38,21 @@
     (update-at nn layer new-layer)))
 
 
-(defn- mapv-indexed [f coll]
+(defn mapv-indexed [f coll]
   (vec (map-indexed f coll)))
 
-(defn- map-matrix-indexed
-  [f mat cols rows]
+(defn map-matrix-indexed
+  [f mat]
   (mapv-indexed (fn [c w-vec]
                   (mapv-indexed (fn [r w] (f c r w))
                                 w-vec))
                 mat))
+
+(defn matrix-op
+  [op mat1 mat2]
+  (map-matrix-indexed (fn [i o w1]
+                        (op w1 (nth (nth mat2 i) o)))
+                      mat1))
 
 (defn map-nn
   "重みの更新を一括して行なう
@@ -56,7 +62,7 @@
                   (let [[in out] (:nodes layer)
                         w-mat (:weights layer)]
                     (assoc layer :weights
-                           (map-matrix-indexed (fn [i o w] (f idx i o w)) w-mat (inc in) out))))
+                           (map-matrix-indexed (fn [i o w] (f idx i o w)) w-mat))))
                 nn))
 
 
