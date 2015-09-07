@@ -14,7 +14,7 @@
   "多層ニューラルネットを定義する"
   [init & layer-nodes]
   (let [nodes (seq-by-2-items layer-nodes)]
-    (mapv (fn [[in out]] (gen-layer in out :logistic init))
+    (mapv (fn [[in out]] (gen-layer in out :sigmoid init))
           nodes)))
 
 (defn stack-layer
@@ -106,12 +106,12 @@
                     [0.0 0.0]
                     [0.0 0.0]
                     [0.0 0.0]]
-          :func :logistic}
+          :func :sigmoid}
          {:node [2 1]
           :weights [[0.0]     ; bias
                     [0.0]
                     [0.0]]
-          :func :logistic}
+          :func :sigmoid}
          ])
 
 (forward (first nn) [1 2 3])

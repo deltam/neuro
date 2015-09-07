@@ -16,19 +16,19 @@
   [x]
   (if (< 0 x) 1 0))
 
-(defn logistic
-  "ロジスティック関数"
+(defn sigmoid
+  "シグモイド関数"
   [x]
   (/ 1.0 (+ 1.0 (Math/exp (- x)))))
 
-(defn d-logistic
-  "ロジスティック関数の微分"
+(defn d-sigmoid
+  "シグモイド関数の微分"
   [x]
-  (* (logistic x)
-     (- 1 (logistic x))))
+  (* (sigmoid x)
+     (- 1 (sigmoid x))))
 
 (defn logit
-  "ロジット関数、ロジスティック関数の逆関数"
+  "ロジット関数、シグモイド関数の逆関数"
   [y]
   (Math/log (/ y (- 1 y))))
 
@@ -54,7 +54,7 @@
   [name]
   (condp = name
         :relu relu
-        :logistic logistic
+        :sigmoid sigmoid
         :tanh tanh))
 
 (defn d-dict
@@ -62,7 +62,7 @@
   [name]
   (condp = name
         :relu d-relu
-        :logistic d-logistic
+        :sigmoid d-sigmoid
         :tanh d-tanh))
 
 (defn i-dict
@@ -70,5 +70,5 @@
   [name]
   (condp = name
     :relu i-relu
-    :logistic logit
+    :sigmoid logit
     :tanh i-tanh))
