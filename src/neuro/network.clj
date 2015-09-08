@@ -3,11 +3,13 @@
 
 (declare gen-num-vec gen-num-matrix seq-by-2-items update-at update-matrix-at)
 
+(declare map-matrix-indexed)
 (defn gen-layer
   "NNの1層を作る"
   [in out activation-f init]
   {:nodes [in out]
-   :weights (gen-num-matrix init (inc in) out)
+   :weights (map-matrix-indexed (fn [i _ w] (if (zero? i) 0 w)) ; bias項の初期値は0にする
+                                (gen-num-matrix init (inc in) out))
    :func activation-f})
 
 (defn gen-nn
@@ -70,7 +72,7 @@
 (defn- weight-init-f [init]
   (if (= :rand init)
     (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
-      (fn [] (gr/double)))
+      (fn [] (- (gr/double) 0.5)))
     (if (fn? init)
       init
       (fn [] init))))
@@ -114,7 +116,7 @@
           :func :sigmoid}
          ])
 
-(forward (first nn) [1 2 3])
+(forward-one (first nn) [1 2 3])
 ;=> [1 1]
 
 )
