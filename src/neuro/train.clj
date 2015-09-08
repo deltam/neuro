@@ -6,17 +6,17 @@
 
 
 (def ^:dynamic *weight-inc-val* 0.00001)
-(def ^:dynamic *learning-rate* 10.0)
 (def ^:dynamic *weight-random-diff* 0.001)
-(def ^:dynamic *weight-decay-param* 0.001)
-
 (def ^:dynamic *report-period* 1)
+
+(def ^:dynamic *weight-decay-param* 0.001)
 (def ^:dynamic *mini-batch-size* 10)
 (def ^:dynamic *momentum-param* 0.6)
 
+(def +learning-rate+ (atom 0.1))
+
 (def +train-err-vec+ (atom []))
 (def +test-err-vec+ (atom []))
-(def +learning-rate+ (atom 0.1))
 (def +go-next-batch+ (atom false))
 (def +now-nn+ (atom nil))
 
@@ -52,8 +52,9 @@
           train-err (pl/p :efn-train (efn next-nn dataset))
           test-err (pl/p :efn-test (efn next-nn testset))]
       (monitoring epoc train-err test-err next-nn)
-      (if (or @+go-next-batch+ (terminate-f epoc err train-err))
+      (if (or (Double/isNaN train-err) @+go-next-batch+ (terminate-f epoc err train-err))
         (do (reset! +go-next-batch+ false)
+            (if (Double/isNaN train-err) (println "NaN!!!"))
             cur-nn)
         (recur cur-nn, next-nn, train-err, (inc epoc))))))
 
