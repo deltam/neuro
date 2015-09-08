@@ -59,13 +59,15 @@
        :image image})))
 
 (defn traindata-2class [digit]
-  (let [mnist-ds (dataset *train-images-filename* *train-labels-filename*)]
-    (map (fn [{num :label, img :image}]
-           {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
-         mnist-ds)))
+  (doall
+   (let [mnist-ds (dataset *train-images-filename* *train-labels-filename*)]
+     (map (fn [{num :label, img :image}]
+            {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
+          mnist-ds))))
 
 (defn testdata-2class [digit]
-  (let [mnist-ds (dataset *test-images-filename* *test-labels-filename*)]
-    (map (fn [{num :label, img :image}]
-           {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
-         mnist-ds)))
+  (doall
+   (let [mnist-ds (dataset *test-images-filename* *test-labels-filename*)]
+     (map (fn [{num :label, img :image}]
+            {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
+          mnist-ds))))
