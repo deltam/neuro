@@ -17,7 +17,7 @@
          w-by-out)))
 
 
-(defn forward
+(defn forward-one
   "1層の順伝播計算を進める"
   [layer in-seq]
   (let [activation-f (fnc/dict (:func layer))
@@ -28,19 +28,19 @@
         (assoc :u-val wx-b)
         (assoc :output output))))
 
-(defn forward-all
+(defn forward
   "多層ニューラルネットの順伝播計算を最後まですすめる"
   [nn-layers in-seq]
   (vec (rest
         (reduce (fn [r layer]
                   (let [x-seq (:output (last r))
                         u (:u-val (last r))
-                        cur (forward layer x-seq)]
+                        cur (forward-one layer x-seq)]
                     (conj r (assoc cur :forward-u-val u))))
                 [{:output in-seq}]
                 nn-layers))))
 
-(defn backward
+(defn backward-one
   "1層の逆伝播の計算を進める"
   [layer delta-seq]
   (let [activation-df (fnc/d-dict (:func layer))
@@ -55,7 +55,7 @@
         (assoc :forward-delta (vec cur-delta))
         (assoc :delta delta-seq))))
 
-(defn backward-all
+(defn backward
   "逆伝播を最後まで実行する"
   [nn-layers delta-seq]
   (let [max-idx (dec (count nn-layers))]
@@ -63,7 +63,7 @@
       (if (< idx 0)
         ret-nn
         (let [cur-layer (nth nn-layers idx)
-              backed (backward cur-layer delta)]
+              backed (backward-one cur-layer delta)]
           (recur (into [backed] ret-nn)
                  (dec idx)
                  (:forward-delta backed)))))))
@@ -72,10 +72,10 @@
 (defn backprop
   "誤差逆伝播法で重みを勾配を算出する"
   [nn-layers in-seq train-seq]
-  (let [forwarded (forward-all nn-layers in-seq)
+  (let [forwarded (forward nn-layers in-seq)
         output (:output (last forwarded))
         delta-seq (map - output train-seq)
-        backed (backward-all forwarded delta-seq)]
+        backed (backward forwarded delta-seq)]
     (mapv (fn [{w-mat :weights, delta-seq :delta, z-val :z-val}]
             (nw/map-matrix-indexed (fn [i o _]
                                      (* (nth delta-seq o)
@@ -87,5 +87,5 @@
 (defn nn-calc
   "多層ニューラルネットの計算をする"
   [nn-layers in-seq]
-  (let [forwarded (forward-all nn-layers in-seq)]
+  (let [forwarded (forward nn-layers in-seq)]
     (:output (last forwarded))))
