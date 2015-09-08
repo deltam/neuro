@@ -15,13 +15,14 @@
 学習データのプロット
 
 ```clojure
-(let [data0 (filter (fn [{[a] :ans}] (= a 0)) user/traindata-2class)
+(let [range [[0 10] [0 10]]
+      data0 (filter (fn [{[a] :ans}] (= a 0)) user/traindata-2class)
       series0 (map (fn [{[x y _] :x}] [x y]) data0)
-        data1 (filter (fn [{[a] :ans}] (= a 1)) user/traindata-2class)
+      data1 (filter (fn [{[a] :ans}] (= a 1)) user/traindata-2class)
       series1 (map (fn [{[x y _] :x}] [x y]) data1)]
   (plot/compose
-    (plot/list-plot series0 :aspect-ratio 1.0 :plot-range [[0 9] [0 9]] :color :blue)
-    (plot/list-plot series1 :aspect-ratio 1.0 :plot-range [[0 9] [0 9]] :color :red)))
+    (plot/list-plot series0 :aspect-ratio 1.0 :plot-range range :color :blue)
+    (plot/list-plot series1 :aspect-ratio 1.0 :plot-range range :color :red)))
 ```
 
 学習結果のプロット
