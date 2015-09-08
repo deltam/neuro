@@ -52,7 +52,7 @@
           train-err (pl/p :efn-train (efn next-nn dataset))
           test-err (pl/p :efn-test (efn next-nn testset))]
       (monitoring epoc train-err test-err next-nn)
-      (if (or @+go-next-batch+ (terminate-f err train-err))
+      (if (or @+go-next-batch+ (terminate-f epoc err train-err))
         (do (reset! +go-next-batch+ false)
             cur-nn)
         (recur cur-nn, next-nn, train-err, (inc epoc))))))
