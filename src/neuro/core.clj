@@ -25,7 +25,6 @@
         output (mapv activation-f wx-b)]
     (-> layer
         (assoc :z-val in-seq)
-        (assoc :u-val wx-b)
         (assoc :output output))))
 
 (defn forward
@@ -33,10 +32,8 @@
   [nn-layers in-seq]
   (vec (rest
         (reduce (fn [r layer]
-                  (let [x-seq (:output (last r))
-                        u (:u-val (last r))
-                        cur (forward-one layer x-seq)]
-                    (conj r (assoc cur :forward-u-val u))))
+                  (let [x-seq (:output (last r))]
+                    (conj r (forward-one layer x-seq))))
                 [{:output in-seq}]
                 nn-layers))))
 
@@ -45,12 +42,12 @@
   [layer delta-seq]
   (let [activation-df (fnc/d-dict (:func layer))
         w-mat (rest (:weights layer)) ; without bias
-        forward-u-val (:forward-u-val layer)
-        cur-delta (map-indexed (fn [idx u]
+        z-val (:z-val layer)
+        cur-delta (map-indexed (fn [idx z]
                                  (let [w-seq (nth w-mat idx)
                                        wd (apply + (map * w-seq delta-seq))]
-                                   (* (activation-df u) wd)))
-                               forward-u-val)]
+                                   (* (activation-df z) wd)))
+                               z-val)]
     (-> layer
         (assoc :forward-delta (vec cur-delta))
         (assoc :delta delta-seq))))

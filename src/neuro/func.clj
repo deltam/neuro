@@ -8,9 +8,7 @@
 (defn i-relu
   "正規化線形関数の逆関数"
   [y]
-  (if (< y 0)
-    0
-    y))
+  (if (< y 0) 0 y))
 
 (defn d-relu
   [x]
@@ -22,10 +20,9 @@
   (/ 1.0 (+ 1.0 (Math/exp (- x)))))
 
 (defn d-sigmoid
-  "シグモイド関数の微分"
-  [x]
-  (* (sigmoid x)
-     (- 1 (sigmoid x))))
+  "シグモイド関数のbackward"
+  [y]
+  (* y (- 1 y)))
 
 (defn logit
   "ロジット関数、シグモイド関数の逆関数"
@@ -38,9 +35,9 @@
   (Math/tanh x))
 
 (defn d-tanh
-  "tanhの微分"
-  [x]
-  (- 1 (* (tanh x) (tanh x))))
+  "tanhのbackward"
+  [y]
+  (- 1 (* y y)))
 
 (defn i-tanh
   "逆双曲線正接関数"
