@@ -16,7 +16,7 @@
 
 (def +train-err-vec+ (atom []))
 (def +test-err-vec+ (atom []))
-(def +learning-rate+ (atom 3.0))
+(def +learning-rate+ (atom 0.1))
 (def +go-next-batch+ (atom false))
 (def +now-nn+ (atom nil))
 
