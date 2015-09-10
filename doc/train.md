@@ -69,7 +69,7 @@
 (time
  (def nn2
    (train-sgd nn err-fn-2class traindata testdata
-          (fn [_ e] (< e 0.2)))
+          (fn [_ _ e] (< e 0.2)))
    ))
 
 
@@ -209,7 +209,7 @@
 (time
  (def nn2
    (train-sgd nn err-fn-2class traindata testdata
-          (fn [_ e] (< e 0.2)))
+          (fn [_ _ e] (< e 0.2)))
    ))
 
 ```
