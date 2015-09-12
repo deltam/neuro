@@ -119,4 +119,29 @@
 (forward-one (first nn) [1 2 3])
 ;=> [1 1]
 
+(def nn
+  [{:type :input
+    :in 2 :out 2}
+   {:type :fc
+    :in 2 :out 6
+    :w [[0 0 0 0 0 0] ; bias
+        [1 1 1 1 1 1]
+        [1 2 3 4 5 6]]}
+   {:type :sigmoid
+    :in 6 :out 6}
+   {:type :fc
+    :in 6 :out 2
+    :w [[0 0] ;bias
+        [1 2]
+        [1 2]
+        [1 2]
+        [1 2]
+        [1 2]
+        [1 2]]}
+   {:type :sigmoid
+    :in 2 :out 2}
+   {:type :fc
+    :in 2 :out 1
+    :w [[0]
+        [1]]}])
 )
