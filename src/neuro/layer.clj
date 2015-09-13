@@ -2,41 +2,42 @@
   (:require [neuro.vol :as vl]
             [neuro.func :as fnc]))
 
-(defn forward
-  [layer in-vol]
-  ((:forward layer) layer in-vol))
+(defmulti forward :type)
+(defmulti backward :type)
 
-(defn backward
-  [layer back-vol]
-  ((:backward layer) layer back-vol))
 
 ;; input layer
 (defn input-layer
   [in]
   {:type :input
-   :out in
-   :forward (fn [this in-vol] in-vol)
-   :backward (fn [this back-vol] back-vol)})
+   :out in})
+
+(defmethod forward :input
+  [this in-vol] in-vol)
+
+(defmethod backward :input
+  [this back-vol]
+  (assoc this :back-vol back-vol))
 
 
-;; full connection layer
-(defn forward-fc [layer in-vol]
-  (let [w-vol (:w layer)
-        bias-vol (:bias layer)]
-    (vl/w-add (vl/w-mul w-vol in-vol)
-              bias-vol)))
-
-(defn backward-fc [layer in-vol]
-  in-vol)
-
+;; connection layer
 (defn fc-layer
   [in out]
   {:type :fc
    :in in, :out out
    :w (vl/vol in out)
-   :bias (vl/vol 1 out)
-   :forward forward-fc
-   :backward backward-fc})
+   :bias (vl/vol 1 out)})
+
+(defmethod forward :fc
+  [this in-vol]
+  (let [w-vol (:w this)
+        bias-vol (:bias this)]
+    (vl/w-add (vl/w-mul w-vol in-vol)
+              bias-vol)))
+
+(defmethod backward :fc
+  [this back-vol]
+  (assoc this :back-vol back-vol))
 
 
 
@@ -44,9 +45,16 @@
 (defn sigmoid-layer
   [in]
   {:type :sigmoid
-   :out in
-   :forward (fn [this in-vol] (vl/map-w fnc/sigmoid in-vol))
-   :backward nil})
+   :out in})
+
+(defmethod forward :sigmoid
+  [this in-vol]
+  (vl/map-w fnc/sigmoid in-vol))
+
+(defmethod backward :sigmoid
+  [this back-vol]
+  (assoc this :back-vol
+         (vl/map-w fnc/d-sigmoid back-vol)))
 
 
 
@@ -55,20 +63,53 @@
 (defn loss-layer
   [in]
   {:type :loss
-   :out in
-   :forward (fn [this in-vol] in-vol)
-   :backward nil ; 誤差関数
-})
+   :out in})
+
+(defmethod forward :loss
+  [this in-vol]
+  in-vol)
+
+(defmethod backward :loss
+  [this back-vol]
+  (assoc this :back-vol back-vol)) ; 誤差関数
+
+
+;; output layer
+(defn output-layer
+  [out]
+  {:type :output
+   :out out})
+
+(defmethod forward :output [this in-vol] in-vol)
+(defmethod backward :output [this back-vol] (assoc this :back-vol back-vol))
 
 
 
 ;; network
 (defn network [& layers]
-  {:layer layers
-   :forward (fn [this in-vol]
-              (reduce (fn [r l] (forward l r))
-                      in-vol (:layer this)))
-   :backward (fn [this back-vol] nil)})
+  {:type :network
+   :layer layers})
+
+(defmethod forward :network
+  [this in-vol]
+  (apply network
+         (let [max (count (:layer this))]
+           (loop [idx 0, done [], v in-vol]
+             (if (< idx max)
+               (let [cur (nth (:layer this) idx)
+                     v2 (forward cur v)]
+                 (recur (inc idx) (conj done (assoc cur :in-vol v)) v2))
+               done)))))
+
+(defmethod backward :network
+  [this back-vol]
+  (apply network
+         (loop [idx (dec (count (:layer this))), done [], v back-vol]
+           (if (< idx 0)
+             (reverse done)
+             (let [cur (nth (:layer this) idx)
+                   next (backward cur v)]
+               (recur (dec idx) (conj done next) (:back-vol next)))))))
 
 
 (comment
