@@ -37,7 +37,16 @@
 
 (defmethod backward :fc
   [this back-vol]
-  (assoc this :back-vol back-vol))
+  (let [w-vol (:w this)
+        prod-vol (vl/vol (:sx w-vol) (:sy w-vol)
+                         (vec (flatten (repeat (:sx w-vol) (:w back-vol)))))
+        dw-vol (vl/w-mul-h w-vol prod-vol)
+        dbias-vol (vl/w-mul-h (:bias this) back-vol)]
+    (-> this
+        (assoc :dw dw-vol)
+        (assoc :dbias dbias-vol)
+        (assoc :back-vol (vl/w-sum-row (vl/transposed dw-vol))))))
+
 
 
 
