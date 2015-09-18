@@ -1,5 +1,7 @@
 (ns neuro.train
   (:require [neuro.core :as core]
+            [neuro.vol :as vl]
+            [neuro.layer :as ly]
             [neuro.network :as nw]
             [clojure.data.generators :as gr]
             [taoensso.timbre.profiling :as pl]))
@@ -48,7 +50,7 @@
   "NNの学習を行なう"
   [init-nn efn w-updater dataset testset terminate-f]
   (loop [pre-nn init-nn, cur-nn init-nn, err (efn init-nn dataset) , epoc 0]
-    (let [next-nn (momentum pre-nn cur-nn (pl/p :update (w-updater cur-nn efn dataset)))
+    (let [next-nn (pl/p :update (w-updater cur-nn efn dataset))
           train-err (pl/p :efn-train (efn next-nn dataset))
           test-err (pl/p :efn-test (efn next-nn testset))]
       (monitoring epoc train-err test-err next-nn)
@@ -78,10 +80,10 @@
   (let [samples (count dataset)
         er (apply +
                   (for [{x :x, [d] :ans} dataset
-                        :let [[y] (core/nn-calc nn x)]]
+                        :let [y (core/nn-calc nn (vl/vol x))]]
                     (+ (* d (Math/log y))
                        (* (- 1.0 d) (Math/log (- 1.0 y))))))]
-    (/ (* -1 er) samples)))
+    (/ (- er) samples)))
 
 
 
@@ -107,12 +109,19 @@
 (defn weight-gradient
   "勾配降下法で重みを更新する"
   [nn efn dataset]
-  (nw/map-nn (fn [l i o w]
-               (let [nn2 (nw/wput nn l i o (+ w *weight-inc-val*))]
-                 (pl/p :gradient
-                       (let [grad (gradient nn nn2 efn dataset)]
-                         (update-by-gradient w grad (zero? i))))))
-             nn))
+  (let [nn-w (ly/map-nn (fn [l i o w]
+                          (let [nn2 (ly/nn-put nn l i o (+ w *weight-inc-val*))]
+                            (pl/p :gradient
+                                  (let [grad (gradient nn nn2 efn dataset)]
+                                    (update-by-gradient w grad false)))))
+                        nn)]
+    (ly/map-nn-bias (fn [l o b]
+                      (let [nn2 (ly/nn-put-bias nn-w l o (+ b *weight-inc-val*))]
+                        (pl/p :gradient
+                              (let [grad (gradient nn-w nn2 efn dataset)]
+                                (update-by-gradient b grad true)))))
+                    nn-w)))
+
 
 
 ;; 誤差逆伝播法による勾配降下法

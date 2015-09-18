@@ -15,5 +15,6 @@
 (defn nn-calc
   "多層ニューラルネットの計算をする"
   [net in-seq]
-  (let [l (last (:layer (ly/forward net in-seq)))]
-    (:in-vol l)))
+  (let [l (last (:layer (ly/forward net in-seq)))
+        {[v] :w} (:in-vol l)]
+    v))
