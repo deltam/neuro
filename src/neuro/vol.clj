@@ -1,4 +1,5 @@
 (ns neuro.vol
+  "NNの最小構成要素"
   (:require [clojure.data.generators :as gr]))
 
 
@@ -9,7 +10,6 @@
   (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
     (vec (repeatedly len (fn [] (- (gr/double) 0.5))))))
 
-;; 最小構成要素
 (defn vol
   ([ix iy w-vec]
    {:sx ix, :sy iy
@@ -52,11 +52,16 @@
                     v2-vec (map #(wget v2 x %) (range (:sy v2)))]]
           (apply + (map * v1-vec v2-vec))))))
 
+(defn w-elm-op
+  "行列の要素ごとの演算"
+  [f v1 v2]
+  (vol (:sx v1) (:sy v1)
+       (mapv f (:w v1) (:w v2))))
+
 (defn w-mul-h
   "w行列のアダマール積"
   [v1 v2]
-  (vol (:sx v1) (:sy v1)
-       (map * (:w v1) (:w v2))))
+  (w-elm-op * v1 v2))
 
 (defn w-sum-row
   "行を足し合わせて1xNの行列にする"

@@ -26,7 +26,7 @@
   {:type :fc
    :in in, :out out
    :w (vl/vol in out)
-   :bias (vl/vol 1 out)})
+   :bias (vl/vol 1 out (vl/zero-vec out))})
 
 (defmethod forward :fc
   [this in-vol]
@@ -103,49 +103,19 @@
   [this in-vol]
   (apply network
          (let [max (count (:layer this))]
-           (loop [idx 0, done [], v in-vol]
-             (if (< idx max)
-               (let [cur (nth (:layer this) idx)
+           (loop [i 0, done [], v in-vol]
+             (if (< i max)
+               (let [cur (nth (:layer this) i)
                      v2 (forward cur v)]
-                 (recur (inc idx) (conj done (assoc cur :in-vol v)) v2))
+                 (recur (inc i) (conj done (assoc cur :in-vol v)) v2))
                done)))))
 
 (defmethod backward :network
   [this back-vol]
   (apply network
-         (loop [idx (dec (count (:layer this))), done [], v back-vol]
-           (if (< idx 0)
+         (loop [i (dec (count (:layer this))), done [], v back-vol]
+           (if (< i 0)
              (reverse done)
-             (let [cur (nth (:layer this) idx)
+             (let [cur (nth (:layer this) i)
                    next (backward cur v)]
-               (recur (dec idx) (conj done next) (:back-vol next)))))))
-
-
-(comment
-
-(def nn
-  [{:type :input
-    :out 2}
-   {:type :fc
-    :out 6
-    :w [[0 0 0 0 0 0] ; bias
-        [1 1 1 1 1 1]
-        [1 2 3 4 5 6]]}
-   {:type :sigmoid
-    :in 6 :out 6}
-   {:type :fc
-    :in 6 :out 2
-    :w [[0 0] ;bias
-        [1 2]
-        [1 2]
-        [1 2]
-        [1 2]
-        [1 2]
-        [1 2]]}
-   {:type :sigmoid
-    :in 2 :out 2}
-   {:type :fc
-    :in 2 :out 1
-    :w [[0]
-        [1]]}])
-)
+               (recur (dec i) (conj done next) (:back-vol next)))))))
