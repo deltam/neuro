@@ -69,6 +69,13 @@
   (w-mul v (vol 1 (:sx v) (fill-vec (:sx v) 1))))
 
 
+(defn reduce-elm
+  "要素を集計する"
+  ([f init v]
+   (reduce f init (:w v)))
+  ([f v]
+   (reduce-elm f 0 v)))
+
 (defn map-w [f v]
   (vol (:sx v) (:sy v)
        (mapv f (:w v))))

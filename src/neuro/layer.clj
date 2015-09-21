@@ -65,20 +65,53 @@
   (assoc this :back-vol
          (vl/map-w fnc/d-sigmoid back-vol)))
 
+;; ReLU
+(defn relu-layer
+  [in]
+  {:type :relu
+   :out in})
+
+(defmethod forward :relu
+  [this in-vol]
+  (vl/map-w fnc/relu in-vol))
+
+(defmethod backward :relu
+  [this back-vol]
+  (assoc this :back-vol
+         (vl/map-w fnc/d-relu back-vol)))
+
+
+;; tanh
+(defn tanh-layer
+  [in]
+  {:type :tanh
+   :out in})
+
+(defmethod forward :tanh
+  [this in-vol]
+  (vl/map-w fnc/tanh in-vol))
+
+(defmethod backward :tanh
+  [this back-vol]
+  (assoc this :back-vol
+         (vl/map-w fnc/d-tanh back-vol)))
+
 
 
 
 ;; loss layer
-(defn loss-layer
+(defn softmax-layer
   [in]
-  {:type :loss
+  {:type :softmax
    :out in})
 
-(defmethod forward :loss
+(defmethod forward :softmax
   [this in-vol]
-  in-vol)
+  (let [es (vl/map-w #(Math/exp %) in-vol)
+        sum (vl/reduce-elm + es)]
+    (vl/map-w #(/ % sum) es)))
 
-(defmethod backward :loss
+(defmethod backward :softmax
   [this back-vol]
   (assoc this :back-vol back-vol)) ; 誤差関数
 
