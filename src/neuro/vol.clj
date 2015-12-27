@@ -36,11 +36,20 @@
   [v]
   (vol (:sy v) (:sx v) (:w v)))
 
+(defn w-elm-op
+  "行列の要素ごとの演算"
+  [f v1 v2]
+  (vol (:sx v1) (:sy v1)
+       (mapv f (:w v1) (:w v2))))
+
 (defn w-add
   "w行列の同じ要素同士を足し合わせる, v1,v2は同じサイズとする"
   [v1 v2]
-  (vol (:sx v1) (:sy v1)
-       (mapv + (:w v1) (:w v2))))
+  (w-elm-op + v1 v2))
+
+(defn w-sub
+  [v1 v2]
+  (w-elm-op - v1 v2))
 
 (defn w-mul
   "w行列の掛け算"
@@ -52,11 +61,6 @@
                     v2-vec (map #(wget v2 x %) (range (:sy v2)))]]
           (apply + (map * v1-vec v2-vec))))))
 
-(defn w-elm-op
-  "行列の要素ごとの演算"
-  [f v1 v2]
-  (vol (:sx v1) (:sy v1)
-       (mapv f (:w v1) (:w v2))))
 
 (defn w-mul-h
   "w行列のアダマール積"
@@ -76,9 +80,14 @@
   ([f v]
    (reduce-elm f 0 v)))
 
-(defn map-w [f v]
-  (vol (:sx v) (:sy v)
-       (mapv f (:w v))))
+(defn map-w
+  ([f v]
+   (vol (:sx v) (:sy v)
+        (mapv f (:w v))))
+  ([f v1 v2]
+   (vol (:sx v1) (:sy v1)
+        (mapv f (:w v1) (:w v2)))))
+
 
 
 (comment

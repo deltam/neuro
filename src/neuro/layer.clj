@@ -4,6 +4,11 @@
 
 (defmulti forward :type)
 (defmulti backward :type)
+(defmulti update :type)
+
+
+(defmethod update :default
+  [this f] this)
 
 
 ;; input layer
@@ -46,6 +51,18 @@
         (assoc :dw dw-vol)
         (assoc :dbias dbias-vol)
         (assoc :back-vol (vl/w-sum-row (vl/transposed dw-vol))))))
+
+(defmethod update :fc
+  [this f]
+  (let [w (:w this)
+        dw (:dw this)
+        bias (:bias this)
+        dbias (:dbias this)]
+    (-> this
+        (assoc :w (vl/map-w f w dw))
+        (assoc :bias (vl/map-w f bias dbias)))))
+
+
 
 
 
@@ -153,7 +170,11 @@
                    next (backward cur v)]
                (recur (dec i) (conj done next) (:back-vol next)))))))
 
-
+(defmethod update :network
+  [this f]
+  (let [layers (:layer this)
+        updated (map (fn [l] (update l f)) layers)]
+    (assoc this :layer updated)))
 
 
 

@@ -3,6 +3,25 @@
   (:require [neuro.layer :as ly]))
 
 
+
+(defn output
+  [net]
+  (let [out-layer (last (:layer net))]
+    (:in-vol out-layer)))
+
+
+(defn backprop
+  "誤差逆伝播法でネットを更新する"
+  [net in-vol train-vol updater]
+  (let [forwarded (ly/forward net in-vol)
+        out-vol (output forwarded)
+        delta-vol (vl/w-sub train-vol out-vol)
+        backwarded (ly/backward forwarded delta-vol)]
+    (ly/update backwarded updater)))
+
+
+
+
 (defn map-nn
   [f nn]
   (let [layers (:layer nn)]
