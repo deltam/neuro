@@ -143,20 +143,3 @@
                  (let [grad (-> d-mat (nth l) (nth i) (nth o))]
                    (pl/p :gradient (update-by-gradient w grad (zero? i)))))
              nn)))
-
-
-
-;; ランダム更新
-
-(defn- rand-add [x]
-  (+ x
-     (gr/rand-nth [*weight-random-diff*
-                   0
-                   (* -1 *weight-random-diff*)])))
-
-(defn weight-randomize
-  "重みをランダムに更新する"
-  [nn efn dataset]
-  (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
-    (nw/map-nn (fn [l i o w] (rand-add w))
-               nn)))
