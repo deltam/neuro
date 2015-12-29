@@ -4,6 +4,38 @@
 
 
 
+(defn network [& layers]
+  {:type :network
+   :layer layers})
+
+(defmethod ly/forward :network
+  [this in-vol]
+  (apply network
+         (let [max (count (:layer this))]
+           (loop [i 0, done [], v in-vol]
+             (if (< i max)
+               (let [cur (nth (:layer this) i)
+                     v2 (ly/forward cur v)]
+                 (recur (inc i) (conj done (assoc cur :in-vol v)) v2))
+               done)))))
+
+(defmethod ly/backward :network
+  [this back-vol]
+  (apply network
+         (loop [i (dec (count (:layer this))), done [], v back-vol]
+           (if (< i 0)
+             (reverse done)
+             (let [cur (nth (:layer this) i)
+                   next (ly/backward cur v)]
+               (recur (dec i) (conj done next) (:back-vol next)))))))
+
+(defmethod ly/update :network
+  [this f]
+  (let [layers (:layer this)
+        updated (map (fn [l] (ly/update l f)) layers)]
+    (assoc this :layer updated)))
+
+
 (defn output
   [net]
   (let [out-layer (last (:layer net))]
@@ -73,3 +105,19 @@
         layer2 (assoc layer :bias b2-vol)]
     (assoc nn :layer
            (assoc (vec (:layer nn)) l layer2))))
+
+
+
+
+
+
+(comment
+
+(def net (nw/network
+          (ly/input-layer 2)
+          (ly/fc-layer 2 3)
+          (ly/sigmoid-layer 3)
+          (ly/fc-layer 3 3)
+          (ly/softmax-layer 3)))
+
+)
