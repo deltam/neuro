@@ -15,8 +15,8 @@
            (loop [i 0, done [], v in-vol]
              (if (< i max)
                (let [cur (nth (:layer this) i)
-                     v2 (ly/forward cur v)]
-                 (recur (inc i) (conj done (assoc cur :in-vol v)) v2))
+                     next (ly/forward cur v)]
+                 (recur (inc i) (conj done next) (:in-vol next)))
                done)))))
 
 (defmethod ly/backward :network
