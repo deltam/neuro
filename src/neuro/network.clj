@@ -16,7 +16,7 @@
              (if (< i max)
                (let [cur (nth (:layer this) i)
                      next (ly/forward cur v)]
-                 (recur (inc i) (conj done next) (:in-vol next)))
+                 (recur (inc i) (conj done next) (:out-vol next)))
                done)))))
 
 (defmethod ly/backward :network
@@ -39,7 +39,7 @@
 (defn output
   [net]
   (let [out-layer (last (:layer net))]
-    (:in-vol out-layer)))
+    (:out-vol out-layer)))
 
 
 (defn backprop
