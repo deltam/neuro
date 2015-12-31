@@ -91,8 +91,11 @@
 
 (defmethod backward :sigmoid
   [this delta-vol]
-  (assoc this :delta-vol
-         (vl/map-w fnc/d-sigmoid delta-vol)))
+  (let [y (:out-vol this)]
+    (assoc this :delta-vol
+           (vl/w-mul-h
+            (vl/map-w fnc/d-sigmoid y)
+            delta-vol))))
 
 
 (defn relu-layer
@@ -108,8 +111,11 @@
 
 (defmethod backward :relu
   [this delta-vol]
-  (assoc this :delta-vol
-         (vl/map-w fnc/d-relu delta-vol)))
+  (let [y (:out-vol this)]
+    (assoc this :delta-vol
+           (vl/w-mul-h
+            (vl/map-w fnc/d-relu y)
+            delta-vol))))
 
 
 (defn tanh-layer
@@ -125,8 +131,11 @@
 
 (defmethod backward :tanh
   [this delta-vol]
-  (assoc this :delta-vol
-         (vl/map-w fnc/d-tanh delta-vol)))
+  (let [y (:out-vol this)]
+    (assoc this :delta-vol
+           (vl/w-mul-h
+            (vl/map-w fnc/d-tanh y)
+            delta-vol))))
 
 
 
