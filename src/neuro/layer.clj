@@ -48,11 +48,10 @@
   (let [w-vol (:w this)
         prod-vol (vl/vol (:sx w-vol) (:sy w-vol)
                          (vec (flatten (repeat (:sx w-vol) (:w delta-vol)))))
-        dw-vol (vl/w-mul-h w-vol prod-vol)
-        dbias-vol (vl/w-mul-h (:bias this) delta-vol)]
+        dw-vol (vl/w-mul-h w-vol prod-vol)]
     (assoc this
            :dw dw-vol
-           :dbias dbias-vol
+           :dbias delta-vol
            :delta-vol (vl/w-sum-row (vl/transposed dw-vol)))))
 
 (defmethod update :fc
