@@ -43,15 +43,25 @@
   (let [out-layer (last (:layer net))]
     (:out-vol out-layer)))
 
+(defn loss
+  [net]
+  (let [loss-layer (last (:layer net))]
+    (:loss loss-layer)))
+
 
 (defn backprop
   "誤差逆伝播法でネットを更新する"
   [net in-vol train-vol updater]
-  (let [forwarded (ly/forward net in-vol)
-        out-vol (output forwarded)
-        delta-vol (vl/w-sub train-vol out-vol)
-        backwarded (ly/backward forwarded delta-vol)]
-    (ly/update backwarded updater)))
+  (let [net-f (ly/forward net in-vol)
+        net-b (ly/backward net-f train-vol)]
+    (ly/update net-b updater)))
+
+(defn backprop-seq
+  "誤差逆伝播法で更新したネットのシーケンスを返す"
+  [net in-vol train-vol updater]
+  (iterate (fn [cur-net]
+             (backprop cur-net in-vol train-vol updater))
+           net))
 
 
 
