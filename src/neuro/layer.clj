@@ -31,7 +31,7 @@
   (assoc-vol this in-vol in-vol))
 
 (defmethod backward :input
-  [this back-vol]
+  [this delta-vol]
   this)
 
 
@@ -53,16 +53,16 @@
                (vl/w-add (vl/w-mul w in-vol) bias))))
 
 (defmethod backward :fc
-  [this back-vol]
+  [this delta-vol]
   (let [w-vol (:w this)
         prod-vol (vl/vol (:sx w-vol) (:sy w-vol)
-                         (vec (flatten (repeat (:sx w-vol) (:w back-vol)))))
+                         (vec (flatten (repeat (:sx w-vol) (:w delta-vol)))))
         dw-vol (vl/w-mul-h w-vol prod-vol)
-        dbias-vol (vl/w-mul-h (:bias this) back-vol)]
+        dbias-vol (vl/w-mul-h (:bias this) delta-vol)]
     (assoc this
            :dw dw-vol
            :dbias dbias-vol
-           :back-vol (vl/w-sum-row (vl/transposed dw-vol)))))
+           :delta-vol (vl/w-sum-row (vl/transposed dw-vol)))))
 
 (defmethod update :fc
   [this f]
@@ -90,9 +90,9 @@
              (vl/map-w fnc/sigmoid in-vol)))
 
 (defmethod backward :sigmoid
-  [this back-vol]
-  (assoc this :back-vol
-         (vl/map-w fnc/d-sigmoid back-vol)))
+  [this delta-vol]
+  (assoc this :delta-vol
+         (vl/map-w fnc/d-sigmoid delta-vol)))
 
 
 (defn relu-layer
@@ -107,9 +107,9 @@
              (vl/map-w fnc/relu in-vol)))
 
 (defmethod backward :relu
-  [this back-vol]
-  (assoc this :back-vol
-         (vl/map-w fnc/d-relu back-vol)))
+  [this delta-vol]
+  (assoc this :delta-vol
+         (vl/map-w fnc/d-relu delta-vol)))
 
 
 (defn tanh-layer
@@ -124,9 +124,9 @@
              (vl/map-w fnc/tanh in-vol)))
 
 (defmethod backward :tanh
-  [this back-vol]
-  (assoc this :back-vol
-         (vl/map-w fnc/d-tanh back-vol)))
+  [this delta-vol]
+  (assoc this :delta-vol
+         (vl/map-w fnc/d-tanh delta-vol)))
 
 
 
@@ -146,5 +146,5 @@
                (vl/map-w #(/ % sum) es))))
 
 (defmethod backward :softmax
-  [this back-vol]
-  (assoc this :back-vol back-vol)) ; 誤差関数
+  [this delta-vol]
+  (assoc this :delta-vol delta-vol)) ; 誤差関数

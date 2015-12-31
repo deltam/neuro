@@ -25,11 +25,11 @@
          (map-with-args ly/forward (:layer this) in-vol :out-vol)))
 
 (defmethod ly/backward :network
-  [this back-vol]
+  [this delta-vol]
   (let [back-layer (reverse (:layer this))]
     (assoc this :layer
            (reverse
-            (map-with-args ly/backward back-layer back-vol :back-vol)))))
+            (map-with-args ly/backward back-layer delta-vol :delta-vol)))))
 
 (defmethod ly/update :network
   [this f]
