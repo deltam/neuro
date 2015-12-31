@@ -3,31 +3,33 @@
   (:require [neuro.layer :as ly]))
 
 
+; util
+(defn- map-with-args
+  "ひとつ前の関数適用の結果より引数を抜き出して受け渡しながらmapする"
+  [f coll init-val arg-key]
+  (loop [cur (first coll), r (rest coll), done [], v init-val]
+    (if (nil? cur)
+      done
+      (let [next (f cur v)]
+        (recur (first r) (rest r) (conj done next) (arg-key next))))))
 
+
+; neural network
 (defn network [& layers]
   {:type :network
    :layer layers})
 
 (defmethod ly/forward :network
   [this in-vol]
-  (apply network
-         (let [max (count (:layer this))]
-           (loop [i 0, done [], v in-vol]
-             (if (< i max)
-               (let [cur (nth (:layer this) i)
-                     next (ly/forward cur v)]
-                 (recur (inc i) (conj done next) (:out-vol next)))
-               done)))))
+  (assoc this :layer
+         (map-with-args ly/forward (:layer this) in-vol :out-vol)))
 
 (defmethod ly/backward :network
   [this back-vol]
-  (apply network
-         (loop [i (dec (count (:layer this))), done [], v back-vol]
-           (if (< i 0)
-             (reverse done)
-             (let [cur (nth (:layer this) i)
-                   next (ly/backward cur v)]
-               (recur (dec i) (conj done next) (:back-vol next)))))))
+  (let [back-layer (reverse (:layer this))]
+    (assoc this :layer
+           (reverse
+            (map-with-args ly/backward back-layer back-vol :back-vol)))))
 
 (defmethod ly/update :network
   [this f]
