@@ -141,6 +141,13 @@
     (assoc this :out-vol
            (vl/map-w #(/ % sum) es))))
 
+; cross-entropy 誤差関数
 (defmethod backward :softmax
-  [this delta-vol]
-  (assoc this :delta-vol delta-vol)) ; 誤差関数
+  [this train-vol]
+  (let [delta-vol (vl/map-w (fn [d y] (+ (* d (Math/log y))
+                                         (* (- 1 d) (Math/log (- 1 y)))))
+                            train-vol
+                            (:out-vol this))]
+    (assoc this
+           :delta-vol delta-vol
+           :loss (- (vl/reduce-elm + delta-vol)))))
