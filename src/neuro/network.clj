@@ -34,7 +34,7 @@
 (defmethod ly/update :network
   [this f]
   (let [layers (:layer this)
-        updated (map (fn [l] (ly/update l f)) layers)]
+        updated (map #(ly/update % f) layers)]
     (assoc this :layer updated)))
 
 

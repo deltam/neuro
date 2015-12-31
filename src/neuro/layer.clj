@@ -11,14 +11,6 @@
   [this f] this)
 
 
-;; util
-(defn assoc-vol
-  [this in-vol out-vol]
-  (assoc this
-         :in-vol in-vol
-         :out-vol out-vol))
-
-
 
 ;; input layer
 (defn input-layer
@@ -28,7 +20,7 @@
 
 (defmethod forward :input
   [this in-vol]
-  (assoc-vol this in-vol in-vol))
+  (assoc this :out-vol in-vol))
 
 (defmethod backward :input
   [this delta-vol]
@@ -48,9 +40,8 @@
 (defmethod forward :fc
   [this in-vol]
   (let [{w :w, bias :bias} this]
-    (assoc-vol this
-               in-vol
-               (vl/w-add (vl/w-mul w in-vol) bias))))
+    (assoc this :out-vol
+           (vl/w-add (vl/w-mul w in-vol) bias))))
 
 (defmethod backward :fc
   [this delta-vol]
@@ -85,9 +76,8 @@
 
 (defmethod forward :sigmoid
   [this in-vol]
-  (assoc-vol this
-             in-vol
-             (vl/map-w fnc/sigmoid in-vol)))
+  (assoc this :out-vol
+         (vl/map-w fnc/sigmoid in-vol)))
 
 (defmethod backward :sigmoid
   [this delta-vol]
@@ -105,9 +95,8 @@
 
 (defmethod forward :relu
   [this in-vol]
-  (assoc-vol this
-             in-vol
-             (vl/map-w fnc/relu in-vol)))
+  (assoc this :out-vol
+         (vl/map-w fnc/relu in-vol)))
 
 (defmethod backward :relu
   [this delta-vol]
@@ -125,9 +114,8 @@
 
 (defmethod forward :tanh
   [this in-vol]
-  (assoc-vol this
-             in-vol
-             (vl/map-w fnc/tanh in-vol)))
+  (assoc this :out-vol
+         (vl/map-w fnc/tanh in-vol)))
 
 (defmethod backward :tanh
   [this delta-vol]
@@ -150,9 +138,8 @@
   [this in-vol]
   (let [es (vl/map-w #(Math/exp %) in-vol)
         sum (vl/reduce-elm + es)]
-    (assoc-vol this
-               in-vol
-               (vl/map-w #(/ % sum) es))))
+    (assoc this :out-vol
+           (vl/map-w #(/ % sum) es))))
 
 (defmethod backward :softmax
   [this delta-vol]
