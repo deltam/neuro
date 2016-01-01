@@ -51,7 +51,7 @@
   [v1 v2]
   (w-elm-op - v1 v2))
 
-(defn w-mul
+(defn w-prod
   "w行列の掛け算"
   [v1 v2]
   (vol (:sx v2) (:sy v1)
@@ -62,7 +62,7 @@
           (apply + (map * v1-vec v2-vec))))))
 
 
-(defn w-mul-h
+(defn w-prod-h
   "w行列のアダマール積"
   [v1 v2]
   (w-elm-op * v1 v2))

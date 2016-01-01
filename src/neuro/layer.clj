@@ -41,14 +41,14 @@
   [this in-vol]
   (let [{w :w, bias :bias} this]
     (assoc this :out-vol
-           (vl/w-add (vl/w-mul w in-vol) bias))))
+           (vl/w-add (vl/w-prod w in-vol) bias))))
 
 (defmethod backward :fc
   [this delta-vol]
   (let [w-vol (:w this)
         prod-vol (vl/vol (:sx w-vol) (:sy w-vol)
                          (vec (flatten (repeat (:sx w-vol) (:w delta-vol)))))
-        dw-vol (vl/w-mul-h w-vol prod-vol)]
+        dw-vol (vl/w-prod-h w-vol prod-vol)]
     (assoc this
            :dw dw-vol
            :dbias delta-vol
@@ -82,7 +82,7 @@
   [this delta-vol]
   (let [y (:out-vol this)]
     (assoc this :delta-vol
-           (vl/w-mul-h
+           (vl/w-prod-h
             (vl/map-w fnc/d-sigmoid y)
             delta-vol))))
 
@@ -101,7 +101,7 @@
   [this delta-vol]
   (let [y (:out-vol this)]
     (assoc this :delta-vol
-           (vl/w-mul-h
+           (vl/w-prod-h
             (vl/map-w fnc/d-relu y)
             delta-vol))))
 
@@ -120,7 +120,7 @@
   [this delta-vol]
   (let [y (:out-vol this)]
     (assoc this :delta-vol
-           (vl/w-mul-h
+           (vl/w-prod-h
             (vl/map-w fnc/d-tanh y)
             delta-vol))))
 
