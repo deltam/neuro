@@ -43,10 +43,13 @@
   (let [out-layer (last (:layer net))]
     (:out-vol out-layer)))
 
+(defn loss-layer
+  [net]
+  (last (:layer net)))
+
 (defn loss
   [net]
-  (let [loss-layer (last (:layer net))]
-    (:loss loss-layer)))
+  (:loss (loss-layer net)))
 
 
 (defn backprop
