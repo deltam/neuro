@@ -168,14 +168,14 @@
 (defn- cross-entropy
   "cross-entropy 誤差関数"
   [train-vol out-vol]
-  (vl/map-w (fn [d y] (+ (* d (Math/log y))
-                         (* (- 1 d) (Math/log (- 1 y)))))
-            train-vol
-            out-vol))
+  (- (vl/reduce-elm + (vl/map-w (fn [d y] (* d (Math/log y)))
+                                train-vol
+                                out-vol))))
 
 (defmethod backward :softmax
   [this train-vol]
-  (let [delta-vol (cross-entropy train-vol (:out-vol this))]
+  (let [loss (cross-entropy train-vol (:out-vol this))
+        delta-vol (vl/map-w - (:out-vol this) train-vol)]
     (assoc this
            :delta-vol delta-vol
-           :loss (- (vl/reduce-elm + delta-vol)))))
+           :loss loss)))
