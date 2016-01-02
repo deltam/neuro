@@ -52,6 +52,7 @@
 
 
 
+;; util
 
 (defn output
   [net]
@@ -66,6 +67,17 @@
   [net]
   (:loss (loss-layer net)))
 
+(defn update-loss
+  [net loss]
+  (assoc net :layer
+         (map #(if (nil? (:loss %))
+                 %
+                 (assoc % :loss loss))
+              (:layer net))))
+
+
+
+;; backpropagation
 
 (defn backprop
   "誤差逆伝播法でネットを更新する"
@@ -74,6 +86,20 @@
         net-b (ly/backward net-f train-vol)]
     (ly/update net-b updater)))
 
+(defn backprop-n
+  "複数の入力ー回答データに対して誤差逆伝播法を適用する"
+  [net train-pairs updater]
+  (let [new-nets (map (fn [[in-vol train-vol]]
+                        (backprop net in-vol train-vol updater))
+                      train-pairs)
+        merged (reduce (fn [r v] (ly/merge-w r v)) new-nets)
+        n (count train-pairs)
+        trained (ly/map-w merged (fn [w] (/ w n)))
+        loss-all (apply + (map loss new-nets))]
+    (update-loss trained (/ loss-all n))))
+
+
+
 (defn backprop-seq
   "誤差逆伝播法で更新したネットのシーケンスを返す"
   [net in-vol train-vol updater]
@@ -81,6 +107,11 @@
              (backprop cur-net in-vol train-vol updater))
            net))
 
+(defn backprop-n-seq
+  [net train-pairs updater]
+  (iterate (fn [cur-net]
+             (backprop-n cur-net train-pairs updater))
+           net))
 
 
 
