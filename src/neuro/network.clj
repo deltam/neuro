@@ -37,6 +37,21 @@
         updated (map #(ly/update % f) layers)]
     (assoc this :layer updated)))
 
+(defmethod ly/merge-w :network
+  [this net]
+  (assoc this :layer
+         (map (fn [l1 l2] (ly/merge-w l1 l2))
+              (:layer this)
+              (:layer net))))
+
+(defmethod ly/map-w :network
+  [this f]
+  (assoc this :layer
+         (map #(ly/map-w % f)
+              (:layer this))))
+
+
+
 
 (defn output
   [net]

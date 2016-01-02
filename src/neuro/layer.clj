@@ -4,12 +4,20 @@
 
 (defmulti forward :type)
 (defmulti backward :type)
+
 (defmulti update :type)
+(defmulti merge-w :type)
+(defmulti map-w :type)
 
 
 (defmethod update :default
   [this f] this)
 
+(defmethod merge-w :default
+  [this layer] this)
+
+(defmethod map-w :default
+  [this f] this)
 
 
 ;; input layer
@@ -62,6 +70,23 @@
            :w (vl/map-w f w dw)
            :bias (vl/map-w f b db))))
 
+(defmethod merge-w :fc
+  [this layer]
+  (let [w1 (:w this)
+        bias1 (:bias this)
+        w2 (:w layer)
+        bias2 (:bias layer)]
+    (assoc this
+           :w (vl/map-w + w1 w2)
+           :bias (vl/map-w + bias1 bias2))))
+
+(defmethod map-w :fc
+  [this f]
+  (let [w (:w this)
+        bias (:bias this)]
+    (assoc this
+           :w (vl/map-w f w)
+           :bias (vl/map-w f bias))))
 
 
 
@@ -142,7 +167,7 @@
 
 (defn- cross-entropy
   "cross-entropy 誤差関数"
-  [out-vol train-vol]
+  [train-vol out-vol]
   (vl/map-w (fn [d y] (+ (* d (Math/log y))
                          (* (- 1 d) (Math/log (- 1 y)))))
             train-vol
