@@ -72,6 +72,11 @@
   [v]
   (w-mul v (vol 1 (:sx v) (fill-vec (:sx v) 1))))
 
+(defn w-max
+  [v]
+  (apply max (:w v)))
+
+
 
 (defn reduce-elm
   "要素を集計する"

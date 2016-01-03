@@ -89,14 +89,14 @@
 (defn backprop-n
   "複数の入力ー回答データに対して誤差逆伝播法を適用する"
   [net train-pairs updater]
-  (let [new-nets (map (fn [[in-vol train-vol]]
-                        (backprop net in-vol train-vol updater))
-                      train-pairs)
-        merged (reduce (fn [r v] (ly/merge-w r v)) new-nets)
+  (let [merged (reduce (fn [r v] (ly/merge-w r v))
+                       (map (fn [[in-vol train-vol]]
+                              (backprop net in-vol train-vol updater))
+                            train-pairs))
         n (count train-pairs)
         trained (ly/map-w merged (fn [w] (/ w n)))
-        loss-all (apply + (map loss new-nets))]
-    (update-loss trained (/ loss-all n))))
+        loss (/ (loss merged) n)]
+    (update-loss trained loss)))
 
 
 

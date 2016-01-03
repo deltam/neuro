@@ -160,7 +160,8 @@
 
 (defmethod forward :softmax
   [this in-vol]
-  (let [es (vl/map-w #(Math/exp %) in-vol)
+  (let [wm (vl/w-max in-vol)
+        es (vl/map-w #(Math/exp (- % wm)) in-vol)
         sum (vl/reduce-elm + es)]
     (assoc this :out-vol
            (vl/map-w #(/ % sum) es))))
@@ -179,3 +180,8 @@
     (assoc this
            :delta-vol delta-vol
            :loss loss)))
+
+(defmethod merge-w :softmax
+  [this layer]
+  (assoc this :loss
+         (+ (:loss this) (:loss layer))))
