@@ -115,6 +115,46 @@
 
 
 
+
+(defn add-w-eps
+  [net l i o eps]
+  (let [layer (nth (:layer net) l)
+        v (:w layer)
+        we (+ (vl/wget v i o) eps)]
+    (assoc net :layer
+           (assoc (vec (:layer net)) l
+                  (assoc layer :w
+                         (vl/wset v i o we))))))
+
+(defn get-dw
+  [net l i o]
+  (let [layer (nth (:layer net) l)
+        v (:dw layer)]
+    (vl/wget v i o)))
+
+(defn calc-loss
+  [net in-vol train-vol]
+  (:loss
+   (ly/backward (loss-layer (ly/forward net in-vol))
+                train-vol)))
+
+(defn gradient-checking
+  [net in-vol train-vol l i o]
+  (let [net-bp (backprop net in-vol train-vol (fn [w dw] (- w (* 0.01 dw))))
+        dw-bp (get-dw net-bp l i o)
+        eps 0.0001
+        net-e (add-w-eps net l i o eps)
+        loss1 (calc-loss net-e in-vol train-vol)
+        loss2 (calc-loss net in-vol train-vol)
+        diff (/ (- loss1 loss2)
+                eps)]
+    (- dw-bp diff)))
+
+
+
+
+
+
 (comment
 
 (def net (nw/network
