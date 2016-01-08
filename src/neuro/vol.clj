@@ -56,7 +56,7 @@
   [v1 v2]
   (vol (:sx v2) (:sy v1)
        (vec
-        (for [x (range (:sx v2)), y (range (:sy v1))
+        (for [y (range (:sy v1)), x (range (:sx v2))
               :let [v1-vec (map #(wget v1 % y) (range (:sx v1)))
                     v2-vec (map #(wget v2 x %) (range (:sy v2)))]]
           (apply + (map * v1-vec v2-vec))))))
