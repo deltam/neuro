@@ -48,19 +48,19 @@
 (defmethod forward :fc
   [this in-vol]
   (let [{w :w, bias :bias} this]
-    (assoc this :out-vol
-           (vl/w-add (vl/w-prod w in-vol) bias))))
+    (assoc this
+           :in-vol in-vol
+           :out-vol (vl/w-add (vl/w-prod w in-vol) bias))))
 
 (defmethod backward :fc
-  [this delta-vol]
-  (let [w-vol (:w this)
-        prod-vol (vl/vol (:sx w-vol) (:sy w-vol)
-                         (vec (flatten (repeat (:sx w-vol) (:w delta-vol)))))
-        dw-vol (vl/w-prod-h w-vol prod-vol)]
+  [this grad-vol]
+  (let [in-vol (:in-vol this)
+        w-vol (:w this)
+        d (vl/w-prod (vl/T w-vol) grad-vol)]
     (assoc this
-           :dw dw-vol
-           :dbias delta-vol
-           :delta-vol (vl/w-sum-row (vl/transposed dw-vol)))))
+           :dw (vl/w-prod grad-vol (vl/T in-vol))
+           :dbias grad-vol
+           :delta-vol d)))
 
 (defmethod update :fc
   [this f]
