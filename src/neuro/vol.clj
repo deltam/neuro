@@ -19,6 +19,10 @@
   ([w-vec] ; 1 dim
    (vol 1 (count w-vec) w-vec)))
 
+;; by matrix
+(def col :sy)
+(def row :sx)
+
 (defn- xy->i
   "2次元から1次元への座標変換"
   [v x y]
@@ -35,6 +39,7 @@
   "転置行列"
   [v]
   (vol (:sy v) (:sx v) (:w v)))
+(def T transposed) ; alias
 
 (defn w-elm-op
   "行列の要素ごとの演算"
