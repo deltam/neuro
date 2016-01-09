@@ -38,7 +38,10 @@
 (defn transposed
   "転置行列"
   [v]
-  (vol (:sy v) (:sx v) (:w v)))
+  (vol (:sy v) (:sx v)
+       (vec
+        (for [x (range (:sx v)), y (range (:sy v))]
+          (wget v x y)))))
 (def T transposed) ; alias
 
 (defn w-elm-op
