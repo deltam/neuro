@@ -78,7 +78,7 @@
 (defn w-sum-row
   "行を足し合わせて1xNの行列にする"
   [v]
-  (w-mul v (vol 1 (:sx v) (fill-vec (:sx v) 1))))
+  (w-prod v (vol 1 (:sx v) (fill-vec (:sx v) 1))))
 
 (defn w-max
   [v]
