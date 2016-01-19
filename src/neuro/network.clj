@@ -59,6 +59,10 @@
   (let [out-layer (last (:layer net))]
     (:out-vol out-layer)))
 
+(defn layer
+  [net idx]
+  (nth (:layer net) idx))
+
 (defn loss-layer
   [net]
   (last (:layer net)))
@@ -115,6 +119,7 @@
 
 
 
+;; gradient checking
 
 (defn add-w-eps
   [net l i o eps]
@@ -141,14 +146,18 @@
 (defn gradient-checking
   [net in-vol train-vol l i o]
   (let [net-bp (backprop net in-vol train-vol (fn [w dw] (- w (* 0.01 dw))))
-        dw-bp (get-dw net-bp l i o)
+        dw (get-dw net-bp l i o)
         eps 0.0001
-        net-e (add-w-eps net l i o eps)
-        loss1 (calc-loss net-e in-vol train-vol)
-        loss2 (calc-loss net in-vol train-vol)
-        diff (/ (- loss1 loss2)
-                eps)]
-    (- dw-bp diff)))
+        net1 (add-w-eps net l i o eps)
+        net2 (add-w-eps net l i o (- eps))
+        loss1 (calc-loss net1 in-vol train-vol)
+        loss2 (calc-loss net2 in-vol train-vol)
+        grad (/ (- loss1 loss2)
+                (* 2 eps))]
+    {:result (< (Math/abs (- dw grad))
+                eps)
+     :dw dw
+     :grad grad}))
 
 
 
