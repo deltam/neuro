@@ -21,7 +21,7 @@
 
 
 ;; input layer
-(defn input-layer
+(defn input
   [in]
   {:type :input
    :out in})
@@ -38,7 +38,7 @@
 
 
 ;; connection layer
-(defn fc-layer
+(defn fc
   [in out]
   {:type :fc
    :in in, :out out
@@ -93,7 +93,7 @@
 
 
 ;; activation layer
-(defn sigmoid-layer
+(defn sigmoid
   [in]
   {:type :sigmoid
    :out in})
@@ -112,7 +112,7 @@
             delta-vol))))
 
 
-(defn relu-layer
+(defn relu
   [in]
   {:type :relu
    :out in})
@@ -131,7 +131,7 @@
             delta-vol))))
 
 
-(defn tanh-layer
+(defn tanh
   [in]
   {:type :tanh
    :out in})
@@ -153,7 +153,7 @@
 
 
 ;; loss layer
-(defn softmax-layer
+(defn softmax
   [in]
   {:type :softmax
    :out in})
