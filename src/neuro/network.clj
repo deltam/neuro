@@ -168,9 +168,22 @@
 
 (def net (nw/network
           (ly/input-layer 2)
-          (ly/fc-layer 2 3)
-          (ly/sigmoid-layer 3)
-          (ly/fc-layer 3 3)
-          (ly/softmax-layer 3)))
+          (ly/fc-layer 2 5)
+          (ly/relu-layer 5)
+          (ly/fc-layer 5 4)
+          (ly/sigmoid-layer 4)
+          (ly/fc-layer 4 3)
+          (ly/tanh-layer 3)
+          (ly/fc-layer 3 2)
+          (ly/softmax-layer 2)))
+
+(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [1 0]) 5 1 0)
+;> {:result true, :dw -0.11955934238580034, :grad -0.11955934228480292}
+
+(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 5 1 0)
+;> {:result true, :dw 0.07476710855760384, :grad 0.07476710852882817}
+
+(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 7 1 0)
+;> {:result true, :dw 0.061648897173240895, :grad 0.06164889717413802}
 
 )
