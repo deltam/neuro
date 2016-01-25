@@ -6,10 +6,6 @@
             [taoensso.timbre.profiling :as pl]))
 
 
-(def ^:dynamic *weight-inc-val* 0.00001)
-(def ^:dynamic *weight-random-diff* 0.001)
-(def ^:dynamic *report-period* 1)
-
 (def ^:dynamic *weight-decay-param* 0.001)
 (def ^:dynamic *mini-batch-size* 10)
 (def ^:dynamic *momentum-param* 0.6)
@@ -18,8 +14,7 @@
 
 (def +train-err-vec+ (atom []))
 (def +test-err-vec+ (atom []))
-(def +go-next-batch+ (atom false))
-(def +now-nn+ (atom nil))
+(def +now-net+ (atom nil))
 
 
 (defn gen-train-pairs
@@ -33,23 +28,21 @@
 (defn init []
   (reset! +train-err-vec+ [])
   (reset! +test-err-vec+ [])
-  (reset! +go-next-batch+ false)
-  (reset! +now-nn+ nil))
+  (reset! +now-net+ nil))
 
 (defn- monitoring
   "学習過程をレポートする"
-  [epoc train-err test-err nn]
-  (if (zero? (mod epoc *report-period*))
-    (do (swap! +train-err-vec+ conj train-err)
-        (swap! +test-err-vec+ conj test-err)
-        (reset! +now-nn+ nn))))
+  [epoc train-err test-err net]
+  (do (swap! +train-err-vec+ conj train-err)
+      (swap! +test-err-vec+ conj test-err)
+      (reset! +now-net+ net)))
 
 
 ;; 重み更新関数
 
 (defn w-updater
   []
-  (fn [w dw] (- w (* @+learning-rate+ dw))))
+  (fn [w dw] (pl/p :update (- w (* @+learning-rate+ dw)))))
 
 (def default-updater (w-updater))
 
