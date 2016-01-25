@@ -79,6 +79,10 @@
                  (assoc % :loss loss))
               (:layer net))))
 
+(defn calc
+  [net in-vol]
+  (output
+   (ly/forward net in-vol)))
 
 
 ;; backpropagation
