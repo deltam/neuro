@@ -1,122 +1,193 @@
 (ns neuro.network
-  (:require [clojure.data.generators :as gr]))
-
-(declare gen-num-vec gen-num-matrix seq-by-2-items update-at update-matrix-at)
-
-(declare map-matrix-indexed)
-(defn gen-layer
-  "NNの1層を作る"
-  [in out activation-f init]
-  {:nodes [in out]
-   :weights (map-matrix-indexed (fn [i _ w] (if (zero? i) 0 w)) ; bias項の初期値は0にする
-                                (gen-num-matrix init (inc in) out))
-   :func activation-f})
-
-(defn gen-nn
-  "多層ニューラルネットを定義する"
-  [init & layer-nodes]
-  (let [nodes (seq-by-2-items layer-nodes)]
-    (mapv (fn [[in out]] (gen-layer in out :sigmoid init))
-          nodes)))
-
-(defn stack-layer
-  "NNに層を追加する"
-  [nn layer]
-  (conj nn layer))
-
-(defn wget
-  "重みを取得する"
-  [nn layer in out]
-  (let [w-mat (:weights (nth nn layer))]
-    ((w-mat in) out)))
-
-(defn wput
-  "重みを更新する"
-  [nn layer in-node out-node w]
-  (let [cur-layer (nth nn layer)
-        w-mat (:weights cur-layer)
-        updated (update-matrix-at w-mat in-node out-node w)
-        new-layer (assoc cur-layer :weights updated)]
-    (update-at nn layer new-layer)))
+  (:require [neuro.vol :as vl])
+  (:require [neuro.layer :as ly]))
 
 
-(defn mapv-indexed [f coll]
-  (vec (map-indexed f coll)))
+; util
+(defn- map-with-args
+  "ひとつ前の関数適用の結果より引数を抜き出して受け渡しながらmapする"
+  [f coll init-val arg-key]
+  (loop [cur (first coll), r (rest coll), done [], v init-val]
+    (if (nil? cur)
+      done
+      (let [next (f cur v)]
+        (recur (first r) (rest r) (conj done next) (arg-key next))))))
 
-(defn map-matrix-indexed
-  [f mat]
-  (mapv-indexed (fn [c w-vec]
-                  (mapv-indexed (fn [r w] (f c r w))
-                                w-vec))
-                mat))
 
-(defn matrix-op
-  [op mat1 mat2]
-  (map-matrix-indexed (fn [i o w1]
-                        (op w1 (nth (nth mat2 i) o)))
-                      mat1))
+; neural network
+(defn network [& layers]
+  {:type :network
+   :layer layers})
 
-(defn map-nn
-  "重みの更新を一括して行なう
-  (f l i o w)"
-  [f nn]
-  (mapv-indexed (fn [idx layer]
-                  (let [[in out] (:nodes layer)
-                        w-mat (:weights layer)]
-                    (assoc layer :weights
-                           (map-matrix-indexed (fn [i o w] (f idx i o w)) w-mat))))
-                nn))
+(defmethod ly/forward :network
+  [this in-vol]
+  (assoc this :layer
+         (map-with-args ly/forward (:layer this) in-vol :out-vol)))
+
+(defmethod ly/backward :network
+  [this delta-vol]
+  (let [back-layer (reverse (:layer this))]
+    (assoc this :layer
+           (reverse
+            (map-with-args ly/backward back-layer delta-vol :delta-vol)))))
+
+(defmethod ly/update :network
+  [this f]
+  (let [layers (:layer this)
+        updated (map #(ly/update % f) layers)]
+    (assoc this :layer updated)))
+
+(defmethod ly/merge-w :network
+  [this net]
+  (assoc this :layer
+         (map (fn [l1 l2] (ly/merge-w l1 l2))
+              (:layer this)
+              (:layer net))))
+
+(defmethod ly/map-w :network
+  [this f]
+  (assoc this :layer
+         (map #(ly/map-w % f)
+              (:layer this))))
 
 
 
-(defn- weight-init-f [init]
-  (if (= :rand init)
-    (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
-      (fn [] (- (gr/double) 0.5)))
-    (if (fn? init)
-      init
-      (fn [] init))))
+;; util
 
-(defn- gen-num-vec [init n]
-  (let [init-f (weight-init-f init)]
-    (apply vector
-           (repeatedly n init-f))))
+(defn output
+  [net]
+  (let [out-layer (last (:layer net))]
+    (:out-vol out-layer)))
 
-(defn- gen-num-matrix [init x y]
-  (gen-num-vec #(gen-num-vec init y) x))
+(defn layer
+  [net idx]
+  (nth (:layer net) idx))
 
-(defn- seq-by-2-items [s]
-  (map vector s (rest s)))
+(defn loss-layer
+  [net]
+  (last (:layer net)))
 
-(defn- update-at [v idx val]
-  (apply vector
-         (concat (subvec v 0 idx)
-                 [val]
-                 (subvec v (inc idx)))))
+(defn loss
+  [net]
+  (:loss (loss-layer net)))
 
-(defn- update-matrix-at [mat x y val]
-  (update-at mat x
-             (update-at (mat x) y val)))
+(defn update-loss
+  [net loss]
+  (assoc net :layer
+         (map #(if (nil? (:loss %))
+                 %
+                 (assoc % :loss loss))
+              (:layer net))))
+
+(defn calc
+  [net in-vol]
+  (output
+   (ly/forward net in-vol)))
+
+
+;; backpropagation
+
+(defn backprop
+  "誤差逆伝播法でネットを更新する"
+  [net in-vol train-vol updater]
+  (let [net-f (ly/forward net in-vol)
+        net-b (ly/backward net-f train-vol)]
+    (ly/update net-b updater)))
+
+(defn backprop-n
+  "複数の入力ー回答データに対して誤差逆伝播法を適用する"
+  [net train-pairs updater]
+  (let [merged (reduce (fn [r v] (ly/merge-w r v))
+                       (map (fn [[in-vol train-vol]]
+                              (backprop net in-vol train-vol updater))
+                            train-pairs))
+        n (count train-pairs)
+        trained (ly/map-w merged (fn [w] (/ w n)))
+        loss (/ (loss merged) n)]
+    (update-loss trained loss)))
+
+
+
+(defn backprop-seq
+  "誤差逆伝播法で更新したネットのシーケンスを返す"
+  [net in-vol train-vol updater]
+  (iterate (fn [cur-net]
+             (backprop cur-net in-vol train-vol updater))
+           net))
+
+(defn backprop-n-seq
+  [net train-pairs updater]
+  (iterate (fn [cur-net]
+             (backprop-n cur-net train-pairs updater))
+           net))
+
+
+
+;; gradient checking
+
+(defn add-w-eps
+  [net l i o eps]
+  (let [layer (nth (:layer net) l)
+        v (:w layer)
+        we (+ (vl/wget v i o) eps)]
+    (assoc net :layer
+           (assoc (vec (:layer net)) l
+                  (assoc layer :w
+                         (vl/wset v i o we))))))
+
+(defn get-dw
+  [net l i o]
+  (let [layer (nth (:layer net) l)
+        v (:dw layer)]
+    (vl/wget v i o)))
+
+(defn calc-loss
+  [net in-vol train-vol]
+  (:loss
+   (ly/backward (loss-layer (ly/forward net in-vol))
+                train-vol)))
+
+(defn gradient-checking
+  [net in-vol train-vol l i o]
+  (let [net-bp (backprop net in-vol train-vol (fn [w dw] (- w (* 0.01 dw))))
+        dw (get-dw net-bp l i o)
+        eps 0.0001
+        net1 (add-w-eps net l i o eps)
+        net2 (add-w-eps net l i o (- eps))
+        loss1 (calc-loss net1 in-vol train-vol)
+        loss2 (calc-loss net2 in-vol train-vol)
+        grad (/ (- loss1 loss2)
+                (* 2 eps))]
+    {:result (< (Math/abs (- dw grad))
+                eps)
+     :dw dw
+     :grad grad}))
+
+
 
 
 
 
 (comment
 
-(def nn [{:node [3 2]
-          :weights [[0.0 0.0] ; bias
-                    [0.0 0.0]
-                    [0.0 0.0]
-                    [0.0 0.0]]
-          :func :sigmoid}
-         {:node [2 1]
-          :weights [[0.0]     ; bias
-                    [0.0]
-                    [0.0]]
-          :func :sigmoid}
-         ])
+(def net (nw/network
+          (ly/input 2)
+          (ly/fc 2 5)
+          (ly/relu 5)
+          (ly/fc 5 4)
+          (ly/sigmoid 4)
+          (ly/fc 4 3)
+          (ly/tanh 3)
+          (ly/fc 3 2)
+          (ly/softmax 2)))
 
-(forward-one (first nn) [1 2 3])
-;=> [1 1]
+(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [1 0]) 5 1 0)
+;> {:result true, :dw -0.11955934238580034, :grad -0.11955934228480292}
+
+(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 5 1 0)
+;> {:result true, :dw 0.07476710855760384, :grad 0.07476710852882817}
+
+(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 7 1 0)
+;> {:result true, :dw 0.061648897173240895, :grad 0.06164889717413802}
 
 )
