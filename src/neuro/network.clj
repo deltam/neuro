@@ -31,10 +31,10 @@
            (reverse
             (map-with-args ly/backward back-layer delta-vol :delta-vol)))))
 
-(defmethod ly/update :network
+(defmethod ly/update-w :network
   [this f]
   (let [layers (:layer this)
-        updated (map #(ly/update % f) layers)]
+        updated (map #(ly/update-w % f) layers)]
     (assoc this :layer updated)))
 
 (defmethod ly/merge-w :network
@@ -92,7 +92,7 @@
   [net in-vol train-vol updater]
   (let [net-f (ly/forward net in-vol)
         net-b (ly/backward net-f train-vol)]
-    (ly/update net-b updater)))
+    (ly/update-w net-b updater)))
 
 (defn backprop-n
   "複数の入力ー回答データに対して誤差逆伝播法を適用する"

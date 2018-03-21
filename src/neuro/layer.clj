@@ -5,12 +5,12 @@
 (defmulti forward :type)
 (defmulti backward :type)
 
-(defmulti update :type)
+(defmulti update-w :type)
 (defmulti merge-w :type)
 (defmulti map-w :type)
 
 
-(defmethod update :default
+(defmethod update-w :default
   [this f] this)
 
 (defmethod merge-w :default
@@ -62,7 +62,7 @@
            :dbias grad-vol
            :delta-vol d)))
 
-(defmethod update :fc
+(defmethod update-w :fc
   [this f]
   (let [{w :w, dw :dw} this
         {b :bias, db :dbias} this]
