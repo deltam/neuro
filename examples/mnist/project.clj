@@ -3,7 +3,7 @@
   :url "http://example.com/FIXME"
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"}
-  :plugins [[cider/cider-nrepl "0.16.0"]
+  :plugins [[cider/cider-nrepl "0.18.0-snapshot"]
             [lein-gorilla "0.4.0"]]
   :source-paths ["src" "../../src"]
   :dependencies [[org.clojure/clojure "1.8.0"]
