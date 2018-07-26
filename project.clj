@@ -1,6 +1,6 @@
 (defproject neuro "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :description "Deep Neural Network written in Clojure"
+  :url "https://github.com/deltam/neuro"
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"}
   :plugins [[cider/cider-nrepl "0.18.0-snapshot"]
