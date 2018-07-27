@@ -2,8 +2,7 @@
   (:require [neuro.core :as core]
             [neuro.vol :as vl]
             [neuro.layer :as ly]
-            [neuro.network :as nw]
-            [taoensso.timbre.profiling :as pl]))
+            [neuro.network :as nw]))
 
 
 (def ^:dynamic *weight-decay-param* 0.001)
@@ -42,7 +41,8 @@
 
 (defn w-updater
   []
-  (fn [w dw] (pl/p :update (- w (* @+learning-rate+ dw)))))
+  (fn [w dw] (- w (* @+learning-rate+ dw))))
+;  (fn [w dw] (pl/p :update (- w (* @+learning-rate+ dw)))))
 
 (def default-updater (w-updater))
 

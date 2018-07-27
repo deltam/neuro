@@ -9,4 +9,5 @@
             [lein-gorilla "0.4.0"]]
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/data.generators "0.1.2"]
-                 [com.taoensso/timbre "4.1.1"]])
+                 [org.clojure/core.async "0.4.474"]
+                 [com.taoensso/tufte "1.4.0"]])
