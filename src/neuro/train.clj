@@ -11,9 +11,10 @@
 
 (def +learning-rate+ (atom 0.01))
 
+(def +now-epoch+ (atom 0))
+(def +now-net+ (atom nil))
 (def +train-err-vec+ (atom []))
 (def +test-err-vec+ (atom []))
-(def +now-net+ (atom nil))
 
 
 (defn gen-train-pairs
@@ -25,16 +26,19 @@
 
 
 (defn init []
+  (reset! +now-epoch+ 0)
+  (reset! +now-net+ nil)
   (reset! +train-err-vec+ [])
-  (reset! +test-err-vec+ [])
-  (reset! +now-net+ nil))
+  (reset! +test-err-vec+ []))
 
 (defn- monitoring
   "学習過程をレポートする"
-  [epoc train-err test-err net]
-  (do (swap! +train-err-vec+ conj train-err)
-      (swap! +test-err-vec+ conj test-err)
-      (reset! +now-net+ net)))
+  ([net train-err]
+   (reset! +now-net+ net)
+   (swap! +train-err-vec+ conj train-err))
+  ([net train-err test-err]
+   (swap! +test-err-vec+ conj test-err)
+   (monitoring net train-err)))
 
 
 ;; 重み更新関数
@@ -70,19 +74,21 @@
   [net train-pairs]
   (nw/backprop-n-seq net train-pairs default-updater))
 
-(defn train-one
+(defn train-batch
   [t-seq terminate-f]
-  (loop [cur (second t-seq), s (rest (rest t-seq)), loss 0.0, epoc 0]
-    (monitoring epoc loss 0.0 cur)
+  (loop [cur (second t-seq), s (rest (rest t-seq))]
+    (monitoring cur (nw/loss cur))
     (if (terminate-f (nw/loss cur))
       cur
-      (recur (first s) (rest s) (nw/loss cur) (inc epoc)))))
+      (recur (first s) (rest s)))))
 
 (defn train
   [net train-pairs test-pairs terminate-f]
   (let [batchs (partition *mini-batch-size* (shuffle train-pairs))]
-    (loop [cur net, b (first batchs), r (rest batchs)]
+    (loop [epoch 1, cur net, b (first batchs), r (rest batchs)]
+      (reset! +now-epoch+ epoch)
       (if (nil? b)
         cur
-        (recur (train-one (train-seq cur b) terminate-f)
+        (recur (inc epoch)
+               (train-batch (train-seq cur b) terminate-f)
                (first r) (rest r))))))
