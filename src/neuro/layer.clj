@@ -192,3 +192,15 @@
   [this layer]
   (assoc this :loss
          (+ (:loss this) (:loss layer))))
+
+
+;; generator
+(defn gen [l & params]
+  (if-let [genf (l
+                 {:input input
+                  :fc fc
+                  :sigmoid sigmoid
+                  :relu relu
+                  :tanh tanh
+                  :softmax softmax})]
+    (apply genf params)))

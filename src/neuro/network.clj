@@ -3,21 +3,34 @@
   (:require [neuro.layer :as ly]))
 
 
-; util
-(defn- map-with-args
-  "ひとつ前の関数適用の結果より引数を抜き出して受け渡しながらmapする"
-  [f coll init-val arg-key]
-  (loop [cur (first coll), r (rest coll), done [], v init-val]
-    (if (nil? cur)
-      done
-      (let [next (f cur v)]
-        (recur (first r) (rest r) (conj done next) (arg-key next))))))
-
-
-; neural network
 (defn network [& layers]
   {:type :network
    :layer layers})
+
+
+(defn parse-net [& defs]
+  (let [grp (partition 3 (concat defs [nil nil]))
+        lds (map (fn [l [_ p _]] (vec (concat l [p]))) grp (concat (rest grp) [nil nil]))]
+    (mapcat (fn [[lt p1 con p2]]
+              (let [l (ly/gen lt p1)]
+                (if (nil? con)
+                  [l]
+                  [l (ly/gen con p1 p2)])))
+            lds)))
+
+(defn gen-net
+  "generate neural net
+  ;; sample
+  (gen-net
+    :input 10 :fc
+    :sigmoid 80 :fc
+    :relu 20 :fc
+    :softmax 2)"
+  [& defs]
+  (apply network (apply parse-net defs)))
+
+
+(declare map-with-args)
 
 (defmethod ly/forward :network
   [this in-vol]
@@ -148,6 +161,28 @@
                 train-vol)))
 
 (defn gradient-checking
+  "To use when debug of backpropagation.
+  See http://ufldl.stanford.edu/wiki/index.php/Gradient_checking_and_advanced_optimization
+
+  (def net (nw/network
+            (ly/input 2)
+            (ly/fc 2 5)
+            (ly/relu 5)
+            (ly/fc 5 4)
+            (ly/sigmoid 4)
+            (ly/fc 4 3)
+            (ly/tanh 3)
+            (ly/fc 3 2)
+            (ly/softmax 2)))
+
+  (nw/gradient-checking net (vl/vol [2 3]) (vl/vol [1 0]) 5 1 0)
+  ;> {:result true, :dw -0.11955934238580034, :grad -0.11955934228480292}
+
+  (nw/gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 5 1 0)
+  ;> {:result true, :dw 0.07476710855760384, :grad 0.07476710852882817}
+
+  (nw/gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 7 1 0)
+  ;> {:result true, :dw 0.061648897173240895, :grad 0.06164889717413802}"
   [net in-vol train-vol l i o]
   (let [net-bp (backprop net in-vol train-vol (fn [w dw] (- w (* 0.01 dw))))
         dw (get-dw net-bp l i o)
@@ -164,30 +199,12 @@
      :grad grad}))
 
 
-
-
-
-
-(comment
-
-(def net (nw/network
-          (ly/input 2)
-          (ly/fc 2 5)
-          (ly/relu 5)
-          (ly/fc 5 4)
-          (ly/sigmoid 4)
-          (ly/fc 4 3)
-          (ly/tanh 3)
-          (ly/fc 3 2)
-          (ly/softmax 2)))
-
-(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [1 0]) 5 1 0)
-;> {:result true, :dw -0.11955934238580034, :grad -0.11955934228480292}
-
-(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 5 1 0)
-;> {:result true, :dw 0.07476710855760384, :grad 0.07476710852882817}
-
-(nw/gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 7 1 0)
-;> {:result true, :dw 0.061648897173240895, :grad 0.06164889717413802}
-
-)
+;; util
+(defn- map-with-args
+  "ひとつ前の関数適用の結果より引数を抜き出して受け渡しながらmapする"
+  [f coll init-val arg-key]
+  (loop [cur (first coll), r (rest coll), done [], v init-val]
+    (if (nil? cur)
+      done
+      (let [next (f cur v)]
+        (recur (first r) (rest r) (conj done next) (arg-key next))))))
