@@ -23,4 +23,6 @@
 
 ## License
 
-Copyright © 2015 MISUMI Masaru
+MIT License
+
+Copyright (c) 2015 MISUMI Masaru
