@@ -166,12 +166,19 @@
     (assoc this :out-vol
            (vl/map-w #(/ % sum) es))))
 
+(defn- normalize
+  "1e-10 - 1.0 の間に重みを正規化"
+  [v]
+  (let [wmax (vl/w-max v)
+        wmin (apply min (:w v))]
+    (vl/map-w #(/ (+ (- % wmin) 1e-10) wmax) v)))
+
 (defn- cross-entropy
   "cross-entropy 誤差関数"
   [train-vol out-vol]
   (- (vl/reduce-elm + (vl/map-w (fn [d y] (* d (Math/log y)))
                                 train-vol
-                                out-vol))))
+                                (normalize out-vol)))))
 
 (defmethod backward :softmax
   [this train-vol]
