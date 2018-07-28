@@ -5,50 +5,46 @@
             [neuro.network :as nw]))
 
 
-(def ^:dynamic *weight-decay-param* 0.001)
-(def ^:dynamic *mini-batch-size* 10)
-(def ^:dynamic *momentum-param* 0.6)
+(declare w-updater)
 
-(def +learning-rate+ (atom 0.01))
+(def ^:dynamic +train-config+
+  {:learning-rate 0.01
+   :mini-batch-size 10
+   :weight-decay 0.001
+   :momentum 0.6
+   :updater w-updater
+   :terminater #(< % 0.1)})
 
+
+;; train congress
 (def +now-epoch+ (atom 0))
 (def +now-net+ (atom nil))
-(def +train-err-vec+ (atom []))
-(def +test-err-vec+ (atom []))
-
-
-(defn gen-train-pairs
-  "vector -> input, answer pair"
-  [in-test-vec]
-  (map vec
-       (partition 2
-                  (map vl/vol in-test-vec))))
-
+(def +train-loss-history+ (atom []))
+(def +test-loss-history+ (atom []))
 
 (defn init []
   (reset! +now-epoch+ 0)
   (reset! +now-net+ nil)
-  (reset! +train-err-vec+ [])
-  (reset! +test-err-vec+ []))
+  (reset! +train-loss-history+ [])
+  (reset! +test-loss-history+ []))
 
 (defn- monitoring
   "学習過程をレポートする"
-  ([net train-err]
+  ([net train-loss]
    (reset! +now-net+ net)
-   (swap! +train-err-vec+ conj train-err))
-  ([net train-err test-err]
-   (swap! +test-err-vec+ conj test-err)
-   (monitoring net train-err)))
+   (swap! +train-loss-history+ conj train-loss))
+  ([net train-loss test-loss]
+   (swap! +test-loss-history+ conj test-loss)
+   (monitoring net train-loss)))
 
 
 ;; 重み更新関数
 
 (defn w-updater
-  []
-  (fn [w dw] (- w (* @+learning-rate+ dw))))
+  [w dw]
+  (- w (* (:learning-rate +train-config+) dw)))
 ;  (fn [w dw] (pl/p :update (- w (* @+learning-rate+ dw)))))
 
-(def default-updater (w-updater))
 
 ;(defn- update-by-gradient
 ;  "重みを勾配に従って更新した値を返す"
@@ -72,23 +68,25 @@
 
 (defn train-seq
   [net train-pairs]
-  (nw/backprop-n-seq net train-pairs default-updater))
+  (nw/backprop-n-seq net train-pairs (:updater +train-config+)))
 
 (defn train-batch
-  [t-seq terminate-f]
+  [t-seq]
   (loop [cur (second t-seq), s (rest (rest t-seq))]
     (monitoring cur (nw/loss cur))
-    (if (terminate-f (nw/loss cur))
+    (if ((:terminater +train-config+) (nw/loss cur))
       cur
       (recur (first s) (rest s)))))
 
 (defn train
-  [net train-pairs test-pairs terminate-f]
-  (let [batchs (partition *mini-batch-size* (shuffle train-pairs))]
-    (loop [epoch 1, cur net, b (first batchs), r (rest batchs)]
-      (reset! +now-epoch+ epoch)
-      (if (nil? b)
-        cur
-        (recur (inc epoch)
-               (train-batch (train-seq cur b) terminate-f)
-               (first r) (rest r))))))
+  [net train-pairs test-pairs & confs]
+  (binding [+train-config+ (merge +train-config+ (apply hash-map confs))]
+    (let [batchs (partition (:mini-batch-size +train-config+) train-pairs)]
+      (loop [epoch 1, cur net, b (first batchs), br (rest batchs)]
+        (reset! +now-epoch+ epoch)
+        (if (nil? b)
+          cur
+          (recur (inc epoch)
+                 (train-batch (train-seq cur b))
+                 (first br)
+                 (rest br)))))))
