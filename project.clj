@@ -9,5 +9,5 @@
             [lein-gorilla "0.4.0"]]
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/data.generators "0.1.2"]
-                 [org.clojure/core.async "0.4.474"]
-                 [com.taoensso/tufte "1.4.0"]])
+                 [org.clojure/core.async "0.4.474"]]
+  :profiles {:dev {:dependencies [[com.taoensso/tufte "2.0.1"]]}})
