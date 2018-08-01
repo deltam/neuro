@@ -5,18 +5,17 @@
             [neuro.network :as nw]))
 
 
-(declare w-updater)
-
 (def ^:dynamic +train-config+
   {:learning-rate 0.01
    :mini-batch-size 10
+   :epoch-limit 10
    :weight-decay 0.001
    :momentum 0.6
-   :updater w-updater
-   :terminater #(< % 0.1)})
+   :updater nil
+   :epoch-reporter (fn [epoch net] nil)})
 
 
-;; train congress
+;; train current status
 (def +now-epoch+ (atom 0))
 (def +now-net+ (atom nil))
 (def +train-loss-history+ (atom []))
@@ -28,23 +27,14 @@
   (reset! +train-loss-history+ [])
   (reset! +test-loss-history+ []))
 
-(defn- monitoring
-  "学習過程をレポートする"
-  ([net train-loss]
-   (reset! +now-net+ net)
-   (swap! +train-loss-history+ conj train-loss))
-  ([net train-loss test-loss]
-   (swap! +test-loss-history+ conj test-loss)
-   (monitoring net train-loss)))
 
-
-;; 重み更新関数
-
-(defn w-updater
-  [w dw]
-  (- w (* (:learning-rate +train-config+) dw)))
-;  (fn [w dw] (pl/p :update (- w (* @+learning-rate+ dw)))))
-
+;; 重み更新関数生成
+(defn gen-w-updater
+  []
+  (if-let [f (:updater +train-config+)]
+    f
+    (fn [w dw]
+      (- w (* (:learning-rate +train-config+) dw)))))
 
 ;(defn- update-by-gradient
 ;  "重みを勾配に従って更新した値を返す"
@@ -68,25 +58,30 @@
 
 (defn train-seq
   [net train-pairs]
-  (nw/backprop-n-seq net train-pairs (:updater +train-config+)))
+  (nw/backprop-n-seq net train-pairs (gen-w-updater)))
 
 (defn train-batch
-  [t-seq]
-  (loop [cur (second t-seq), s (rest (rest t-seq))]
-    (monitoring cur (nw/loss cur))
-    (if ((:terminater +train-config+) (nw/loss cur))
-      cur
-      (recur (first s) (rest s)))))
+  [net batch]
+  (nw/backprop-n net batch (gen-w-updater)))
+
+(defn train-batch-all
+  [init-net batchs]
+  (reduce (fn [net b]
+            (swap! +train-loss-history+ conj (nw/loss net))
+            (train-batch net b))
+          init-net
+          batchs))
 
 (defn train
-  [net train-pairs test-pairs & confs]
+  [net train-pairs & confs]
   (binding [+train-config+ (merge +train-config+ (apply hash-map confs))]
     (let [batchs (partition (:mini-batch-size +train-config+) train-pairs)]
-      (loop [epoch 1, cur net, b (first batchs), br (rest batchs)]
+      (reset! +now-net+ net)
+      (reset! +now-epoch+ 0)
+      (loop [epoch 0, cur net]
         (reset! +now-epoch+ epoch)
-        (if (nil? b)
-          cur
-          (recur (inc epoch)
-                 (train-batch (train-seq cur b))
-                 (first br)
-                 (rest br)))))))
+        (reset! +now-net+ cur)
+        ((:epoch-reporter +train-config+) epoch cur)
+        (if (< epoch (:epoch-limit +train-config+))
+          (recur (inc epoch) (train-batch-all cur batchs))
+          cur)))))
