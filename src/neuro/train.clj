@@ -79,47 +79,28 @@
                                  (backprop net in-vol train-vol updater))
                                train-pairs))
            trained (ly/map-w merged #(/ % n))
-           loss (/ (loss merged) n)]
-       (update-loss trained loss))))
-
-
-
-(defn backprop-seq
-  "誤差逆伝播法で更新したネットのシーケンスを返す"
-  [net in-vol train-vol updater]
-  (iterate (fn [cur-net]
-             (backprop cur-net in-vol train-vol updater))
-           net))
-
-(defn backprop-n-seq
-  [net train-pairs updater]
-  (iterate (fn [cur-net]
-             (backprop-n cur-net train-pairs updater))
-           net))
-
+           loss (/ (nw/loss merged) n)]
+       (nw/update-loss trained loss))))
 
 
 ;;; train funcs
 
-(defn train-seq
-  [net train-pairs]
-  (backprop-n-seq net train-pairs (gen-w-updater)))
-
-(defn train-batch
+(defn update-mini-batch
   [net batch]
-  (p ::train-batch
+  (p ::update-mini-batch
      (backprop-n net batch (gen-w-updater))))
 
-(defn train-batch-all
+(defn reduce-mini-batchs
   [init-net batchs]
-  (p ::tb-all
+  (p ::reduce-mini-batch
      (reduce (fn [net b]
                (swap! +train-loss-history+ conj (nw/loss net))
-               (train-batch net b))
+               (update-mini-batch net b))
              init-net
              batchs)))
 
-(defn train ;-sgd
+(defn sgd
+  "Stochastic gradient descent"
   [net train-pairs & confs]
   (binding [+train-config+ (merge +train-config+ (apply hash-map confs))]
     (let [batchs (partition (:mini-batch-size +train-config+) train-pairs)]
@@ -129,10 +110,9 @@
       (loop [epoch 0, cur net]
         (reset! +now-epoch+ epoch)
         (reset! +now-net+ cur)
-        (p ::report
-           ((:epoch-reporter +train-config+) epoch cur))
+        ((:epoch-reporter +train-config+) epoch cur)
         (if (< epoch (:epoch-limit +train-config+))
-          (recur (inc epoch) (train-batch-all cur batchs))
+          (recur (inc epoch) (reduce-mini-batchs cur batchs))
           cur)))))
 
 
@@ -157,7 +137,7 @@
 (defn calc-loss
   [net in-vol train-vol]
   (:loss
-   (ly/backward (loss-layer (ly/forward net in-vol))
+   (ly/backward (nw/loss-layer (ly/forward net in-vol))
                 train-vol)))
 
 (defn gradient-checking
