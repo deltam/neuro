@@ -1,6 +1,7 @@
 (ns neuro.network
-  (:require [neuro.vol :as vl])
-  (:require [neuro.layer :as ly]))
+  (:require [taoensso.tufte :as tufte :refer (p profiled profile)])
+  (:require [neuro.vol :as vl]
+            [neuro.layer :as ly]))
 
 
 (defn network [& layers]
@@ -103,19 +104,18 @@
 (defn backprop
   "誤差逆伝播法でネットを更新する"
   [net in-vol train-vol updater]
-  (let [net-f (ly/forward net in-vol)
-        net-b (ly/backward net-f train-vol)]
+  (let [net-b (ly/backward (ly/forward net in-vol) train-vol)]
     (ly/update-w net-b updater)))
 
 (defn backprop-n
   "複数の入力ー回答データに対して誤差逆伝播法を適用する"
   [net train-pairs updater]
-  (let [merged (reduce (fn [r v] (ly/merge-w r v))
+  (let [n (count train-pairs)
+        merged (reduce ly/merge-w
                        (map (fn [[in-vol train-vol]]
                               (backprop net in-vol train-vol updater))
                             train-pairs))
-        n (count train-pairs)
-        trained (ly/map-w merged (fn [w] (/ w n)))
+        trained (ly/map-w merged #(/ % n))
         loss (/ (loss merged) n)]
     (update-loss trained loss)))
 
