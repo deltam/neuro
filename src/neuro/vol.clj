@@ -11,6 +11,7 @@
     (vec (repeatedly len (fn [] (- (gr/double) 0.5))))))
 
 (defn vol
+  "as matrix, col -> :sy, row -> :sx"
   ([ix iy w-vec]
    {:sx ix, :sy iy
     :w w-vec})
@@ -18,10 +19,6 @@
    (vol ix iy (rand-vec (* ix iy))))
   ([w-vec] ; 1 dim
    (vol 1 (count w-vec) w-vec)))
-
-;; by matrix
-(def col :sy)
-(def row :sx)
 
 (defn- xy->i
   "2次元から1次元への座標変換"
@@ -50,16 +47,16 @@
   (vol (:sx v1) (:sy v1)
        (mapv f (:w v1) (:w v2))))
 
-(defn w-add
+(defn w+
   "w行列の同じ要素同士を足し合わせる, v1,v2は同じサイズとする"
   [v1 v2]
   (w-elm-op + v1 v2))
 
-(defn w-sub
+(defn w-
   [v1 v2]
   (w-elm-op - v1 v2))
 
-(defn w-prod
+(defn dot
   "w行列の掛け算"
   [v1 v2]
   (vol (:sx v2) (:sy v1)
@@ -70,7 +67,7 @@
           (apply + (map * v1-vec v2-vec))))))
 
 
-(defn w-prod-h
+(defn w*
   "w行列のアダマール積"
   [v1 v2]
   (w-elm-op * v1 v2))
@@ -78,7 +75,7 @@
 (defn w-sum-row
   "行を足し合わせて1xNの行列にする"
   [v]
-  (w-prod v (vol 1 (:sx v) (fill-vec (:sx v) 1))))
+  (dot v (vol 1 (:sx v) (fill-vec (:sx v) 1))))
 
 (defn w-max
   [v]
@@ -100,12 +97,3 @@
   ([f v1 v2]
    (vol (:sx v1) (:sy v1)
         (mapv f (:w v1) (:w v2)))))
-
-
-
-(comment
-
-(def vol {:sx 1, :sy 5
-          :w [1 2 3 4 5]})
-
-)

@@ -1,8 +1,6 @@
 (ns neuro.train
-  (:require [taoensso.tufte :as tufte :refer (p profiled profile)])
-  (:require [neuro.core :as core]
-            [neuro.vol :as vl]
-            [neuro.layer :as ly]
+  (:require [taoensso.tufte :as tufte :refer (p)])
+  (:require [neuro.layer :as ly]
             [neuro.network :as nw]))
 
 

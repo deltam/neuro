@@ -97,13 +97,13 @@
                 [3  9] [4 10]
                 [5 11] [6 12]]))))))
 
-(deftest w-prod-test
+(deftest dot-test
   (testing "prod 2x2"
     (let [v1 (vol 2 2 [1 2
                        3 4])
           v2 (vol 2 2 [10 20
                        30 40])
-          {x :sx, y :sy, w :w} (w-prod v1 v2)]
+          {x :sx, y :sy, w :w} (dot v1 v2)]
       (is (= 2 x))
       (is (= 2 y))
       (is (= [(+ (* 1 10) (* 2 30))  (+ (* 1 20) (* 2 40))
@@ -114,7 +114,7 @@
                        2
                        3])
           v2 (vol 2 1 [10 20])
-          {x :sx, y :sy, w :w} (w-prod v1 v2)]
+          {x :sx, y :sy, w :w} (dot v1 v2)]
       (is (= 2 x))
       (is (= 3 y))
       (is (= [(* 1 10) (* 1 20)

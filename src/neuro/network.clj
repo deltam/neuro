@@ -1,7 +1,6 @@
 (ns neuro.network
-  (:require [taoensso.tufte :as tufte :refer (p profiled profile)])
-  (:require [neuro.vol :as vl]
-            [neuro.layer :as ly]))
+;  (:require [taoensso.tufte :as tufte :refer (p)])
+  (:require [neuro.layer :as ly]))
 
 
 (defn network [& layers]
@@ -61,9 +60,7 @@
 (defmethod ly/merge-w :network
   [this net]
   (assoc this :layer
-         (map (fn [l1 l2] (ly/merge-w l1 l2))
-              (:layer this)
-              (:layer net))))
+         (map ly/merge-w (:layer this) (:layer net))))
 
 (defmethod ly/map-w :network
   [this f]

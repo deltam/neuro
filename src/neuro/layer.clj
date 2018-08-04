@@ -1,4 +1,5 @@
 (ns neuro.layer
+;  (:require [taoensso.tufte :as tufte :refer (p)])
   (:require [neuro.vol :as vl]
             [neuro.func :as fnc]))
 
@@ -50,17 +51,14 @@
   (let [{w :w, bias :bias} this]
     (assoc this
            :in-vol in-vol
-           :out-vol (vl/w-add (vl/w-prod w in-vol) bias))))
+           :out-vol (vl/w+ (vl/dot w in-vol) bias))))
 
 (defmethod backward :fc
   [this grad-vol]
-  (let [in-vol (:in-vol this)
-        w-vol (:w this)
-        d (vl/w-prod (vl/T w-vol) grad-vol)]
-    (assoc this
-           :dw (vl/w-prod grad-vol (vl/T in-vol))
-           :dbias grad-vol
-           :delta-vol d)))
+  (assoc this
+         :dw (vl/dot grad-vol (vl/T (:in-vol this)))
+         :dbias grad-vol
+         :delta-vol (vl/dot (vl/T (:w this)) grad-vol)))
 
 (defmethod update-w :fc
   [this f]
@@ -107,9 +105,7 @@
   [this delta-vol]
   (let [y (:out-vol this)]
     (assoc this :delta-vol
-           (vl/w-prod-h
-            (vl/map-w fnc/d-sigmoid y)
-            delta-vol))))
+           (vl/w* (vl/map-w fnc/d-sigmoid y) delta-vol))))
 
 
 (defn relu
@@ -126,9 +122,7 @@
   [this delta-vol]
   (let [y (:out-vol this)]
     (assoc this :delta-vol
-           (vl/w-prod-h
-            (vl/map-w fnc/d-relu y)
-            delta-vol))))
+           (vl/w* (vl/map-w fnc/d-relu y) delta-vol))))
 
 
 (defn tanh
@@ -145,9 +139,7 @@
   [this delta-vol]
   (let [y (:out-vol this)]
     (assoc this :delta-vol
-           (vl/w-prod-h
-            (vl/map-w fnc/d-tanh y)
-            delta-vol))))
+           (vl/w* (vl/map-w fnc/d-tanh y) delta-vol))))
 
 
 
@@ -181,12 +173,10 @@
                                 (normalize out-vol)))))
 
 (defmethod backward :softmax
-  [this train-vol]
-  (let [loss (cross-entropy train-vol (:out-vol this))
-        delta-vol (vl/map-w - (:out-vol this) train-vol)]
-    (assoc this
-           :delta-vol delta-vol
-           :loss loss)))
+  [this answer-vol]
+  (assoc this
+         :delta-vol (vl/w- (:out-vol this) answer-vol)
+         :loss (cross-entropy answer-vol (:out-vol this))))
 
 (defmethod merge-w :softmax
   [this layer]
