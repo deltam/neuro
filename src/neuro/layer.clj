@@ -75,8 +75,8 @@
         w2 (:w layer)
         bias2 (:bias layer)]
     (assoc this
-           :w (vl/map-w + w1 w2)
-           :bias (vl/map-w + bias1 bias2))))
+           :w (vl/w+ w1 w2)
+           :bias (vl/w+ bias1 bias2))))
 
 (defmethod map-w :fc
   [this f]
