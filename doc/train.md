@@ -2,6 +2,11 @@
 
 (comment
 
+(require '[neuro.train :as tr]
+         '[neuro.network :as nw]
+         '[neuro.layer :as ly]
+		 '[neuro.vol :as vl])
+
 (def traindata-2class
      (tr/gen-train-pairs
       [[2 5] [0 1]

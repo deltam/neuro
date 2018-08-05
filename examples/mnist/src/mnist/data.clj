@@ -1,73 +1,105 @@
-(ns mnist.data)
-
-(def ^:dynamic *train-images-filename* "train-images-idx3-ubyte")
-(def ^:dynamic *train-labels-filename* "train-labels-idx1-ubyte")
-(def ^:dynamic *test-images-filename* "t10k-images-idx3-ubyte")
-(def ^:dynamic *test-labels-filename* "t10k-labels-idx1-ubyte")
-
-(defn read-as-byte-buf [filename]
-  (with-open [fis (java.io.FileInputStream. filename)]
-    (let [channel (.getChannel fis)
-          byte-buf (java.nio.ByteBuffer/allocate (.size channel))]
-      (.read channel byte-buf)
-      byte-buf)))
-
-(defn bytes->int [byte-buf offset]
-  (.getInt byte-buf (* offset 4)))
-
-(defn bytes->image-meta [byte-buffer]
-  (let [magic (bytes->int byte-buffer 0)
-        num (bytes->int byte-buffer 1)
-        rows (bytes->int byte-buffer 2)
-        cols (bytes->int byte-buffer 3)]
-    {:magic magic
-     :count num
-     :rows rows
-     :cols cols}))
-
-(defn byte-range [byte-buf offset len]
-  (map #(.get byte-buf (+ offset %))
-       (range len)))
-
-(defn bytes->images [byte-buf]
-  (let [meta (bytes->image-meta byte-buf)
-        offset 16
-        len (* (:rows meta) (:cols meta))]
-    (for [cnt (range (:count meta))]
-      (byte-range byte-buf (+ offset (* cnt len)) len))))
+(ns mnist.data
+  "Load MNIST binary files"
+  (:require [neuro.vol :as vl]
+            [octet.core :as buf])
+  (:import java.awt.image.BufferedImage
+           java.nio.ByteBuffer
+           java.nio.channels.FileChannel
+           java.nio.channels.FileChannel$MapMode
+           java.io.FileInputStream))
 
 
-(defn bytes->label-meta [byte-buffer]
-  (let [magic (bytes->int byte-buffer 0)
-        num (bytes->int byte-buffer 1)]
-    {:magic magic
-     :count num}))
+(declare read-data)
 
-(defn bytes->labels [byte-buf]
-  (let [meta (bytes->label-meta byte-buf)
-        offset 8]
-    (for [cnt (range (:count meta))]
-      (.get byte-buf (+ offset cnt)))))
+(defn- load-train-raw []
+  (read-data "train-images-idx3-ubyte" "train-labels-idx1-ubyte"))
+(def load-train (memoize load-train-raw))
 
-(defn dataset [images-filename labels-filename]
-  (let [image-bytes (read-as-byte-buf images-filename)
-        images (bytes->images image-bytes)
-        label-bytes (read-as-byte-buf labels-filename)
-        labels (bytes->labels label-bytes)]
-    (for [[image label] (map vector images labels)]
-      {:label label
-       :image image})))
+(defn- load-test-raw []
+  (read-data "t10k-images-idx3-ubyte" "t10k-labels-idx1-ubyte"))
+(def load-test (memoize load-test-raw))
 
-(defn traindata-2class [digit]
-  (doall
-   (let [mnist-ds (dataset *train-images-filename* *train-labels-filename*)]
-     (map (fn [{num :label, img :image}]
-            {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
-          mnist-ds))))
 
-(defn testdata-2class [digit]
-  (doall
-   (let [mnist-ds (dataset *test-images-filename* *test-labels-filename*)]
-     (map (fn [{num :label, img :image}]
-            {:x (apply vector img), :ans[(if (= num digit) 1.0 0.0)]})
-          mnist-ds))))
+
+(defn float->byte [f]
+  (let [n (int (* 256 f))]
+    (byte (if (< n 128) n (- n 256)))))
+
+(defn byte->float [b]
+  (float
+   (/ (if (neg? b)
+        (+ b 256)
+        b)
+      (float 256))))
+
+(defn- gray->rgb [gf]
+  (let [g (float->byte gf)]
+    (int
+     (bit-or (bit-and (int (bit-shift-left g 8)) 0x00ff0000)
+             (bit-and (int (bit-shift-left g 4)) 0x0000ff00)
+             (bit-and (int g) 0xff)))))
+
+(defn ^BufferedImage vol->image [{w :w}]
+  (let [img-buf (BufferedImage. 28 28 BufferedImage/TYPE_BYTE_GRAY)]
+    (doseq [x (range 28), y (range 28)]
+      (.setRGB ^BufferedImage img-buf x y (gray->rgb (nth w (+ x (* y 28))))))
+    img-buf))
+
+(defn vol->digit [{w :w}]
+  (reduce (fn [r d] (if (< (nth w r) (nth w d))
+                      d
+                      r))
+          (range 10)))
+
+(defn in-dig
+  "`(filter (in-dig 0 1) (:train (mnist.data/dataset)))`"
+  [& more]
+  (let [dset (set more)]
+    (fn [[_ label-vol]] (dset (vol->digit label-vol)))))
+
+
+;;; read binary files
+
+(def ^{:private true, :const true} len-image-bytes (* 28 28))
+
+(def ^:private image-header-spec
+  (buf/spec :magic buf/int32
+            :num buf/int32
+            :rows buf/int32
+            :cols buf/int32))
+(def ^:private image-chunk-spec (buf/bytes len-image-bytes))
+
+(def ^:private label-header-spec
+  (buf/spec :magic buf/int32
+            :num buf/int32))
+(def ^:private label-chunk-spec buf/byte)
+
+(defn- read-repeat-chunk [buffer header-spec chunk-spec]
+  (let [{num :num} (buf/read buffer header-spec)]
+    (buf/read buffer
+              (buf/repeat num chunk-spec)
+              {:offset (buf/size header-spec)})))
+
+(defn- ^ByteBuffer read-as-byte-buf [^String filename]
+  (with-open [f (FileInputStream. ^String filename)]
+    (let [ch (.getChannel f)
+          mbb (.map ch FileChannel$MapMode/READ_ONLY 0 (.size ch))]
+      mbb)))
+
+(defn- read-data [images-filename labels-filename]
+  (let [image-buf (read-as-byte-buf images-filename)
+        images (read-repeat-chunk image-buf
+                                  image-header-spec image-chunk-spec)
+        label-buf (read-as-byte-buf labels-filename)
+        labels (read-repeat-chunk label-buf
+                                  label-header-spec label-chunk-spec)]
+    (loop [pairs (map vector images labels), ret []]
+      (if (empty? pairs)
+        ret
+        (let [[img digit] (first pairs)]
+          (recur (rest pairs)
+                 (conj ret
+                       [(vl/vol (doall (mapv #(byte->float (aget ^bytes img %))
+                                             (range (* 28 28)))))
+                        (vl/vol (doall (mapv #(if (= % digit) 1.0 0.0)
+                                             (range 10))))])))))))
