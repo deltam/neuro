@@ -1,5 +1,6 @@
 (ns neuro.vol
   "NNの最小構成要素"
+  (:require [taoensso.tufte :as tufte :refer (p)])
   (:require [clojure.data.generators :as gr]))
 
 
@@ -10,42 +11,31 @@
   (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
     (vec (repeatedly len (fn [] (- (gr/double) 0.5))))))
 
-(defn vol
-  "as matrix, col -> :sy, row -> :sx"
-  ([ix iy w-vec]
-   {:sx ix, :sy iy
-    :w w-vec})
-  ([ix iy]
-   (vol ix iy (rand-vec (* ix iy))))
-  ([w-vec] ; 1 dim
-   (vol 1 (count w-vec) w-vec)))
-
 (defn- xy->i
   "2次元から1次元への座標変換"
   [v x y]
   (+ x (* y (:sx v))))
 
-(defn wget [v x y] (nth (:w v) (xy->i v x y)))
 
-(defn wset [v x y w]
-  (assoc v :w
-         (assoc (:w v) (xy->i v x y) w)))
+(defrecord VecVol [sx sy w])
 
+(defn vol
+  "as matrix, col -> :sy, row -> :sx"
+  ([ix iy wv]
+   (->VecVol ix iy wv))
+  ([ix iy]
+   (vol ix iy (rand-vec (* ix iy))))
+  ([wv] ; 1 dim
+   (vol 1 (count wv) wv)))
 
-(defn transposed
-  "転置行列"
-  [v]
-  (vol (:sy v) (:sx v)
-       (vec
-        (for [x (range (:sx v)), y (range (:sy v))]
-          (wget v x y)))))
-(def T transposed) ; alias
+(defn wget [this x y] (nth (:w this) (xy->i this x y)))
 
-(defn w-elm-op
-  "行列の要素ごとの演算"
-  [f v1 v2]
-  (vol (:sx v1) (:sy v1)
-       (mapv f (:w v1) (:w v2))))
+(defn wset [this x y w]
+  (assoc this :w
+         (assoc (:w this) (xy->i this x y) w)))
+
+(defn w-elm-op [f this other]
+  (vol (:sx this) (:sy this) (mapv f (:w this) (:w other))))
 
 (defn w+
   "w行列の同じ要素同士を足し合わせる, v1,v2は同じサイズとする"
@@ -56,21 +46,35 @@
   [v1 v2]
   (w-elm-op - v1 v2))
 
-(defn dot
-  "w行列の掛け算"
-  [v1 v2]
-  (vol (:sx v2) (:sy v1)
-       (vec
-        (for [y (range (:sy v1)), x (range (:sx v2))
-              :let [v1-vec (map #(wget v1 % y) (range (:sx v1)))
-                    v2-vec (map #(wget v2 x %) (range (:sy v2)))]]
-          (apply + (map * v1-vec v2-vec))))))
-
-
 (defn w*
   "w行列のアダマール積"
   [v1 v2]
   (w-elm-op * v1 v2))
+
+(defn dot
+  "w行列の掛け算"
+  [v1 v2]
+  (p ::dot
+     (vol (:sx v2) (:sy v1)
+          (let [v1-y-range (range (:sy v1))
+                v1-rows (mapv (fn [y] (map #(wget v1 % y) (range (:sx v1))))
+                              v1-y-range)
+                v2-x-range (range (:sx v2))
+                v2-cols (mapv (fn [x] (map #(wget v2 x %) (range (:sy v2))))
+                              v2-x-range)
+                xy (for [y (range (:sy v1)), x (range (:sx v2))]
+                     [x y])]
+            (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
+                  xy)))))
+
+(defn T
+  "転置行列"
+  [v]
+  (p ::T
+     (vol (:sy v) (:sx v)
+          (let [xy (for [x (range (:sx v)), y (range (:sy v))]
+                     [x y])]
+            (mapv (fn [[x y]] (wget v x y)) xy)))))
 
 (defn w-sum-row
   "行を足し合わせて1xNの行列にする"
@@ -81,14 +85,12 @@
   [v]
   (apply max (:w v)))
 
-
-
 (defn reduce-elm
   "要素を集計する"
   ([f init v]
    (reduce f init (:w v)))
   ([f v]
-   (reduce-elm f 0 v)))
+   (reduce f 0 (:w v))))
 
 (defn map-w
   ([f v]
