@@ -68,9 +68,9 @@
   [net train-pairs updater]
   (let [n (count train-pairs)
         merged (reduce ly/merge-w
-                       (map (fn [[in-vol train-vol]]
-                              (backprop net in-vol train-vol updater))
-                            train-pairs))
+                       (pmap (fn [[in-vol train-vol]]
+                               (backprop net in-vol train-vol updater))
+                             train-pairs))
         trained (ly/map-w merged #(/ % n))
         loss (/ (nw/loss merged) n)]
     (nw/update-loss trained loss)))
