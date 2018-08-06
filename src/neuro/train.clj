@@ -59,43 +59,36 @@
 (defn backprop
   "誤差逆伝播法でネットを更新する"
   [net in-vol train-vol updater]
-  (p ::backprop
-     (let [net-b (p ::backward
-                    (ly/backward
-                     (p ::forward
-                        (ly/forward net in-vol))
-                     train-vol))]
-       (ly/update-w net-b updater))))
+  (let [net-f (p ::forward (ly/forward net in-vol))
+        net-b (p ::backward (ly/backward net-f train-vol))]
+    (ly/update-w net-b updater)))
 
 (defn backprop-n
   "複数の入力ー回答データに対して誤差逆伝播法を適用する"
   [net train-pairs updater]
-  (p ::backprop-n
-     (let [n (count train-pairs)
-           merged (reduce ly/merge-w
-                          (map (fn [[in-vol train-vol]]
-                                 (backprop net in-vol train-vol updater))
-                               train-pairs))
-           trained (ly/map-w merged #(/ % n))
-           loss (/ (nw/loss merged) n)]
-       (nw/update-loss trained loss))))
+  (let [n (count train-pairs)
+        merged (reduce ly/merge-w
+                       (map (fn [[in-vol train-vol]]
+                              (backprop net in-vol train-vol updater))
+                            train-pairs))
+        trained (ly/map-w merged #(/ % n))
+        loss (/ (nw/loss merged) n)]
+    (nw/update-loss trained loss)))
 
 
 ;;; train funcs
 
 (defn update-mini-batch
   [net batch]
-  (p ::update-mini-batch
-     (backprop-n net batch (gen-w-updater))))
+  (backprop-n net batch (gen-w-updater)))
 
 (defn reduce-mini-batchs
   [init-net batchs]
-  (p ::reduce-mini-batch
-     (reduce (fn [net b]
-               (swap! +train-loss-history+ conj (nw/loss net))
-               (update-mini-batch net b))
-             init-net
-             batchs)))
+  (reduce (fn [net b]
+            (swap! +train-loss-history+ conj (nw/loss net))
+            (update-mini-batch net b))
+          init-net
+          batchs))
 
 (defn sgd
   "Stochastic gradient descent"
