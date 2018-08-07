@@ -31,7 +31,7 @@
 (defn feedforward [nn in-vol]
   (reduce (fn [r [wv bv]]
             (sigmoid-vec
-             (vl/w-add (vl/w-prod wv r) bv)))
+             (vl/w+ (vl/dot wv r) bv)))
           in-vol
           (map vector (:weights nn) (:biases nn))))
 
@@ -63,8 +63,8 @@
 (defn update-mini-batch [nn mini-batch eta]
   (let [[acm-b acm-w] (reduce (fn [[rb rw] [in out]]
                                 (let [[db dw] (backprop nn in out)]
-                                  [(map vl/w-add rb db)
-                                   (map vl/w-add rw dw)]))
+                                  [(map vl/w+ rb db)
+                                   (map vl/w+ rw dw)]))
                               [(map size-zero-vol (:biases nn))
                                (map size-zero-vol (:weights nn))]
                               mini-batch)
@@ -75,26 +75,26 @@
 
 
 (defn cost-derivative [nn act out]
-  (vl/w-sub act out))
+  (vl/w- act out))
 
 (defn backprop [nn in-vol out-vol]
   ;; feedforwad
   (let [[acts zs] (reduce (fn [[as zs] [b w]]
                             (let [x (last as)
-                                  z (vl/w-add (vl/w-prod w x) b)
+                                  z (vl/w+ (vl/dot w x) b)
                                   a (sigmoid-vec z)]
                               [(conj as a) (conj zs z)]))
                           [[in-vol] []]
                           (map vector (:biases nn) (:weights nn)))
-        delta (vl/w-prod-h (cost-derivative nn (last acts) out-vol)
-                           (sigmoid-prime-vec (last zs)))
+        delta (vl/w* (cost-derivative nn (last acts) out-vol)
+                     (sigmoid-prime-vec (last zs)))
         ;; backward
         [db dw] (reduce (fn [[dbs dws delta] [act z w]]
-                          (let [d (vl/w-prod-h (vl/w-prod (vl/T w) delta)
-                                               (sigmoid-prime-vec z))
-                                dw (vl/w-prod d (vl/T act))]
+                          (let [d (vl/w* (vl/dot (vl/T w) delta)
+                                         (sigmoid-prime-vec z))
+                                dw (vl/dot d (vl/T act))]
                             [(concat [d] dbs) (concat [dw] dws) d]))
-                        [[delta] [(vl/w-prod delta (vl/T (first (rest (reverse acts)))))] delta]
+                        [[delta] [(vl/dot delta (vl/T (first (rest (reverse acts)))))] delta]
                         (map vector
                              (drop 2 (reverse acts))
                              (drop 1 (reverse zs))
@@ -112,3 +112,10 @@
   (count (filter (fn [[in out]]
                    (= (argmax out) (argmax (feedforward nn in))))
                  test-data)))
+
+(comment
+  ;; Usage
+  (require '[mnist.proto :as proto])
+  (def net (pro/network 784 30 10))
+  (def net2 (pro/sgd net pro/train-data 30 10 3.0 pro/test-data))
+)
