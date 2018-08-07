@@ -1,12 +1,40 @@
 (ns neuro.network
-;  (:require [taoensso.tufte :as tufte :refer (p)])
+  (:require [taoensso.tufte :as tufte :refer (p)])
   (:require [neuro.layer :as ly]))
 
 
-(defn network [& layers]
-  {:type :network
-   :layer layers})
+(declare map-with-args)
 
+(defrecord Network [layer]
+  ly/Layer
+  (forward [this in-vol]
+    (p ::forward-network
+       (assoc this :layer
+              (map-with-args ly/forward (:layer this) in-vol :out-vol))))
+  (backward [this delta-vol]
+    (p ::backward-network
+       (let [back-layer (reverse (:layer this))]
+         (assoc this :layer
+                (reverse
+                 (map-with-args ly/backward back-layer delta-vol :delta-vol))))))
+  (update-w [this f]
+    (p ::update-w-network
+       (let [layers (:layer this)
+             updated (map #(ly/update-w % f) layers)]
+         (assoc this :layer updated))))
+  (merge-w [this other]
+    (p ::merge-w-network
+       (assoc this :layer
+              (map ly/merge-w (:layer this) (:layer other)))))
+  (map-w [this f]
+    (p ::map-w-network
+       (assoc this :layer
+              (map #(ly/map-w % f)
+                   (:layer this))))))
+
+
+(defn network [& layers]
+  (->Network layers))
 
 (defn parse-net [& defs]
   (let [grp (partition 3 (concat defs [nil nil]))
@@ -35,38 +63,6 @@
   [net in-vol]
   (output
    (ly/forward net in-vol)))
-
-
-(declare map-with-args)
-
-(defmethod ly/forward :network
-  [this in-vol]
-  (assoc this :layer
-         (map-with-args ly/forward (:layer this) in-vol :out-vol)))
-
-(defmethod ly/backward :network
-  [this delta-vol]
-  (let [back-layer (reverse (:layer this))]
-    (assoc this :layer
-           (reverse
-            (map-with-args ly/backward back-layer delta-vol :delta-vol)))))
-
-(defmethod ly/update-w :network
-  [this f]
-  (let [layers (:layer this)
-        updated (map #(ly/update-w % f) layers)]
-    (assoc this :layer updated)))
-
-(defmethod ly/merge-w :network
-  [this net]
-  (assoc this :layer
-         (map ly/merge-w (:layer this) (:layer net))))
-
-(defmethod ly/map-w :network
-  [this f]
-  (assoc this :layer
-         (map #(ly/map-w % f)
-              (:layer this))))
 
 
 

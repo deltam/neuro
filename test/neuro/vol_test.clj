@@ -4,7 +4,7 @@
 
 (deftest vol-test
   (testing "create vol on default"
-    (is (= {:sx 2 :sy 2
+    (is (= #neuro.vol.VecVol{:sx 2 :sy 2
             :w [1 2
                 3 4]}
            (vol 2 2 [1 2
@@ -70,12 +70,12 @@
                      3 4
                      5 6])]
     (testing "transposed for vector"
-      (let [{x :sx, y :sy, w :w} (transposed v1)]
+      (let [{x :sx, y :sy, w :w} (T v1)]
         (is (= 5 x))
         (is (= 1 y))
         (is (= [1 2 3 4 5] w))))
     (testing "transposed for matrix"
-      (let [{x :sx, y :sy, w :w} (transposed v2)]
+      (let [{x :sx, y :sy, w :w} (T v2)]
         (is (= 3 x))
         (is (= 2 y))
         (is (= [1 3 5

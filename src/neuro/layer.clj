@@ -1,162 +1,150 @@
 (ns neuro.layer
-;  (:require [taoensso.tufte :as tufte :refer (p)])
+  (:require [taoensso.tufte :as tufte :refer (p)])
   (:require [neuro.vol :as vl]
             [neuro.func :as fnc]))
 
-(defmulti forward :type)
-(defmulti backward :type)
+(defprotocol Layer
+  "Neural Network Layer"
+  (forward [this in-vol] "feedfoward")
+  (backward [this delta-vol] "use backprop")
+  (update-w [this f] "update weights")
+  (merge-w [this other] "merge-w 2 layer")
+  (map-w [this f] "map f weights"))
 
-(defmulti update-w :type)
-(defmulti merge-w :type)
-(defmulti map-w :type)
-
-
-(defmethod update-w :default
-  [this f] this)
-
-(defmethod merge-w :default
-  [this layer] this)
-
-(defmethod map-w :default
-  [this f] this)
 
 
 ;; input layer
-(defn input
-  [in]
-  {:type :input
-   :out in})
 
-(defmethod forward :input
-  [this in-vol]
-  (assoc this :out-vol in-vol))
+(defrecord Input [out out-vol]
+  Layer
+  (forward [this in-vol] (assoc this :out-vol in-vol))
+  (backward [this delta-vol] this)
+  (update-w [this f] this)
+  (merge-w [this other] this)
+  (map-w [this f] this))
 
-(defmethod backward :input
-  [this delta-vol]
-  this)
-
+(defn input [in]
+  (->Input in nil))
 
 
 
 ;; connection layer
+(defrecord FullConn [in out w bias in-vol out-vol dw dbias delta-vol]
+  Layer
+  (forward [this in-vol]
+    (p ::forward-fc
+       (let [{w :w, bias :bias} this]
+         (assoc this
+                :in-vol in-vol
+                :out-vol (vl/w+ (vl/dot w in-vol) bias)))))
+  (backward [this grad-vol]
+    (p ::backward-fc
+       (assoc this
+              :dw (vl/dot grad-vol (vl/T (:in-vol this)))
+              :dbias grad-vol
+              :delta-vol (vl/dot (vl/T (:w this)) grad-vol))))
+  (update-w [this f]
+    (p ::update-w-fc
+       (let [{w :w, dw :dw} this
+             {b :bias, db :dbias} this]
+         (assoc this
+                :w (vl/map-w f w dw)
+                :bias (vl/map-w f b db)))))
+  (merge-w [this other]
+    (p ::merge-w-fc
+       (let [w1 (:w this)
+             bias1 (:bias this)
+             w2 (:w other)
+             bias2 (:bias other)]
+         (assoc this
+                :w (vl/w+ w1 w2)
+                :bias (vl/w+ bias1 bias2)))))
+  (map-w [this f]
+    (p ::map-w-fc
+       (let [w (:w this)
+             bias (:bias this)]
+         (assoc this
+                :w (vl/map-w f w)
+                :bias (vl/map-w f bias))))))
+
 (defn fc
   [in out]
-  {:type :fc
-   :in in, :out out
-   :w (vl/vol in out)
-   :bias (vl/vol 1 out (vl/zero-vec out))})
-
-(defmethod forward :fc
-  [this in-vol]
-  (let [{w :w, bias :bias} this]
-    (assoc this
-           :in-vol in-vol
-           :out-vol (vl/w+ (vl/dot w in-vol) bias))))
-
-(defmethod backward :fc
-  [this grad-vol]
-  (assoc this
-         :dw (vl/dot grad-vol (vl/T (:in-vol this)))
-         :dbias grad-vol
-         :delta-vol (vl/dot (vl/T (:w this)) grad-vol)))
-
-(defmethod update-w :fc
-  [this f]
-  (let [{w :w, dw :dw} this
-        {b :bias, db :dbias} this]
-    (assoc this
-           :w (vl/map-w f w dw)
-           :bias (vl/map-w f b db))))
-
-(defmethod merge-w :fc
-  [this layer]
-  (let [w1 (:w this)
-        bias1 (:bias this)
-        w2 (:w layer)
-        bias2 (:bias layer)]
-    (assoc this
-           :w (vl/w+ w1 w2)
-           :bias (vl/w+ bias1 bias2))))
-
-(defmethod map-w :fc
-  [this f]
-  (let [w (:w this)
-        bias (:bias this)]
-    (assoc this
-           :w (vl/map-w f w)
-           :bias (vl/map-w f bias))))
-
+  (->FullConn in out
+              (vl/vol in out)
+              (vl/vol 1 out (vl/zero-vec out))
+              nil
+              nil
+              nil
+              nil
+              nil))
 
 
 
 
 ;; activation layer
+
+(defrecord Sigmoid [out out-vol delta-vol]
+  Layer
+  (forward [this in-vol]
+    (p ::forward-sigmoid
+       (assoc this :out-vol
+              (vl/map-w fnc/sigmoid in-vol))))
+  (backward [this delta-vol]
+    (p ::backward-sigmoid
+       (let [y (:out-vol this)]
+         (assoc this :delta-vol
+                (vl/w* (vl/map-w fnc/d-sigmoid y) delta-vol)))))
+  (update-w [this f] this)
+  (merge-w [this other] this)
+  (map-w [this f] this))
+
 (defn sigmoid
   [in]
-  {:type :sigmoid
-   :out in})
+  (->Sigmoid in nil nil))
 
-(defmethod forward :sigmoid
-  [this in-vol]
-  (assoc this :out-vol
-         (vl/map-w fnc/sigmoid in-vol)))
 
-(defmethod backward :sigmoid
-  [this delta-vol]
-  (let [y (:out-vol this)]
-    (assoc this :delta-vol
-           (vl/w* (vl/map-w fnc/d-sigmoid y) delta-vol))))
 
+(defrecord ReLU [out out-vol delta-vol]
+  Layer
+  (forward [this in-vol]
+    (assoc this :out-vol
+           (vl/map-w fnc/relu in-vol)))
+  (backward [this delta-vol]
+    (let [y (:out-vol this)]
+      (assoc this :delta-vol
+             (vl/w* (vl/map-w fnc/d-relu y) delta-vol))))
+  (update-w [this f] this)
+  (merge-w [this other] this)
+  (map-w [this f] this))
 
 (defn relu
   [in]
-  {:type :relu
-   :out in})
+  (->ReLU in nil nil))
 
-(defmethod forward :relu
-  [this in-vol]
-  (assoc this :out-vol
-         (vl/map-w fnc/relu in-vol)))
 
-(defmethod backward :relu
-  [this delta-vol]
-  (let [y (:out-vol this)]
-    (assoc this :delta-vol
-           (vl/w* (vl/map-w fnc/d-relu y) delta-vol))))
 
+(defrecord Tanh [out out-vol delta-vol]
+  Layer
+  (forward [this in-vol]
+    (assoc this :out-vol
+           (vl/map-w fnc/tanh in-vol)))
+  (backward [this delta-vol]
+    (let [y (:out-vol this)]
+      (assoc this :delta-vol
+             (vl/w* (vl/map-w fnc/d-tanh y) delta-vol))))
+  (update-w [this f] this)
+  (merge-w [this other] this)
+  (map-w [this f] this))
 
 (defn tanh
   [in]
-  {:type :tanh
-   :out in})
+  (->Tanh in nil nil))
 
-(defmethod forward :tanh
-  [this in-vol]
-  (assoc this :out-vol
-         (vl/map-w fnc/tanh in-vol)))
-
-(defmethod backward :tanh
-  [this delta-vol]
-  (let [y (:out-vol this)]
-    (assoc this :delta-vol
-           (vl/w* (vl/map-w fnc/d-tanh y) delta-vol))))
 
 
 
 
 ;; loss layer
-(defn softmax
-  [in]
-  {:type :softmax
-   :out in})
-
-(defmethod forward :softmax
-  [this in-vol]
-  (let [wm (vl/w-max in-vol)
-        es (vl/map-w #(Math/exp (- % wm)) in-vol)
-        sum (vl/reduce-elm + es)]
-    (assoc this :out-vol
-           (vl/map-w #(/ % sum) es))))
 
 (defn- normalize
   "1e-10 - 1.0 の間に重みを正規化"
@@ -172,16 +160,32 @@
                                 train-vol
                                 (normalize out-vol)))))
 
-(defmethod backward :softmax
-  [this answer-vol]
-  (assoc this
-         :delta-vol (vl/w- (:out-vol this) answer-vol)
-         :loss (cross-entropy answer-vol (:out-vol this))))
+(defrecord Softmax [out out-vol delta-vol loss]
+  Layer
+  (forward [this in-vol]
+    (p ::forward-softmax
+       (let [wm (vl/w-max in-vol)
+             es (vl/map-w #(Math/exp (- % wm)) in-vol)
+             sum (vl/reduce-elm + es)]
+         (assoc this :out-vol
+                (vl/map-w #(/ % sum) es)))))
+  (backward [this answer-vol]
+    (p ::backward-softmax
+       (assoc this
+              :delta-vol (vl/w- (:out-vol this) answer-vol)
+              :loss (cross-entropy answer-vol (:out-vol this)))))
+  (update-w [this f] this)
+  (merge-w [this other]
+    (p ::merge-w-softmax
+       (assoc this :loss
+              (+ (:loss this) (:loss other)))))
+  (map-w [this f] this))
 
-(defmethod merge-w :softmax
-  [this layer]
-  (assoc this :loss
-         (+ (:loss this) (:loss layer))))
+(defn softmax
+  [in]
+  (->Softmax in nil nil nil))
+
+
 
 
 ;; generator
