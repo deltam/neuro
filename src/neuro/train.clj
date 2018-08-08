@@ -4,7 +4,7 @@
             [neuro.network :as nw]))
 
 
-(def ^:dynamic +train-config+
+(def ^:dynamic +train-params+
   {:learning-rate 0.01
    :mini-batch-size 10
    :epoch-limit 10
@@ -12,6 +12,12 @@
    :momentum 0.6
    :updater nil
    :epoch-reporter (fn [epoch net] nil)})
+
+(defmacro with-params
+  [params-vec train-expr]
+  (let [conf (merge +train-params+ (apply hash-map params-vec))]
+    `(binding [+train-params+ ~conf]
+       ~train-expr)))
 
 
 ;; train current status
@@ -31,10 +37,10 @@
 ;; 重み更新関数生成
 (defn gen-w-updater
   []
-  (if-let [f (:updater +train-config+)]
+  (if-let [f (:updater +train-params+)]
     f
     (fn [w dw]
-      (- w (* (:learning-rate +train-config+) dw)))))
+      (- w (* (:learning-rate +train-params+) dw)))))
 
 ;(defn- update-by-gradient
 ;  "重みを勾配に従って更新した値を返す"
@@ -92,16 +98,15 @@
 
 (defn sgd
   "Stochastic gradient descent"
-  [net train-pairs & confs]
-  (binding [+train-config+ (merge +train-config+ (apply hash-map confs))]
-    (let [batchs (partition (:mini-batch-size +train-config+) train-pairs)]
-      (reset! +now-net+ net)
-      (reset! +now-epoch+ 0)
-      (reset! +num-batchs+ (count batchs))
-      (loop [epoch 0, cur net]
-        (reset! +now-epoch+ epoch)
-        (reset! +now-net+ cur)
-        ((:epoch-reporter +train-config+) epoch cur)
-        (if (< epoch (:epoch-limit +train-config+))
-          (recur (inc epoch) (reduce-mini-batchs cur batchs))
-          cur)))))
+  [net train-pairs]
+  (let [batchs (partition (:mini-batch-size +train-params+) train-pairs)]
+    (reset! +now-net+ net)
+    (reset! +now-epoch+ 0)
+    (reset! +num-batchs+ (count batchs))
+    (loop [epoch 0, cur net]
+      (reset! +now-epoch+ epoch)
+      (reset! +now-net+ cur)
+      (future ((:epoch-reporter +train-params+) epoch cur))
+      (if (< epoch (:epoch-limit +train-params+))
+        (recur (inc epoch) (reduce-mini-batchs cur batchs))
+        cur))))

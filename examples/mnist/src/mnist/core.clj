@@ -40,12 +40,11 @@
   ([net]
    (reset! start-time-now-epoch (System/currentTimeMillis))
    (nt/init)
-   (nt/sgd net
-           train-data
-           :mini-batch-size 20
-           :epoch-limit 30
-           :learning-rate 1.0
-           :epoch-reporter report)))
+   (nt/with-params [:mini-batch-size 20
+                    :epoch-limit 30
+                    :learning-rate 1.0
+                    :epoch-reporter report]
+     (nt/sgd net train-data))))
 
 
 (defn print-time-to-next-epoch []
