@@ -61,13 +61,12 @@
 (defn update-eta [rate] (fn [p dp] (- p (* dp rate))))
 
 (defn update-mini-batch [nn mini-batch eta]
-  (let [[acm-b acm-w] (reduce (fn [[rb rw] [in out]]
-                                (let [[db dw] (backprop nn in out)]
-                                  [(map vl/w+ rb db)
-                                   (map vl/w+ rw dw)]))
-                              [(map size-zero-vol (:biases nn))
-                               (map size-zero-vol (:weights nn))]
-                              mini-batch)
+  (let [bpv (pmap (fn [[in out]] (backprop nn in out))
+                  mini-batch)
+        [acm-b acm-w] (reduce (fn [[rb rw] [db dw]]
+                                [(map vl/w+ rb db)
+                                 (map vl/w+ rw dw)])
+                              bpv)
         n (count mini-batch)]
     (assoc nn
            :biases (map #(vl/map-w (update-eta (/ eta n)) %1 %2) (:biases nn) acm-b)
