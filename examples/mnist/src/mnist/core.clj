@@ -22,7 +22,7 @@
                 (md/vol->digit (nw/feedforward net img-vol))))
            test-pairs)))
 
-(def start-time-now-epoch (atom 0))
+(def ^:private start-time-now-epoch (atom 0))
 
 (defn report [ep net]
   (let [ok (evaluate net test-data)
@@ -48,11 +48,11 @@
 
 
 (defn print-time-to-next-epoch []
-  (let [done-batchs (mod (count @nt/+train-loss-history+) @nt/+num-batchs+)
+  (let [done-batchs (mod (count @nt/*train-loss-history*) @nt/*num-batchs*)
         now-elapsed (- (System/currentTimeMillis) @start-time-now-epoch)
         msec-per-batch (if (zero? done-batchs)
                          now-elapsed
                          (/ now-elapsed done-batchs))
-        until-msec (* (- @nt/+num-batchs+ done-batchs) msec-per-batch)]
+        until-msec (* (- @nt/*num-batchs* done-batchs) msec-per-batch)]
     (printf "start next epoch at %4.2f min later\n"
             (float (/ until-msec 60000)))))
