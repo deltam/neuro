@@ -15,11 +15,11 @@
 (def train-data (drop 10000 my-data))
 
 (defn evaluate [net test-pairs]
-  (count
-   (filter (fn [[img-vol label-vol]]
-             (= (md/vol->digit label-vol)
-                (md/vol->digit (nw/feedforward net img-vol))))
-           test-pairs)))
+  (let [fwd (pmap (fn [[img-vol label-vol]]
+                    (= (md/vol->digit label-vol)
+                       (md/vol->digit (nc/feedforward net img-vol))))
+                  test-pairs)]
+    (count (filter true? fwd))))
 
 (def ^:private start-time-now-epoch (atom 0))
 
