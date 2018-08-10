@@ -40,9 +40,9 @@
   (backward [this grad-vol]
     (p ::backward-fc
        (assoc this
-              :dw (vl/dot grad-vol (vl/T (:in-vol this)))
+              :dw (vl/dot-v-Tv grad-vol (:in-vol this))
               :dbias grad-vol
-              :delta-vol (vl/dot (vl/T (:w this)) grad-vol))))
+              :delta-vol (vl/dot-Tv-v (:w this) grad-vol))))
   (update-w [this f]
     (p ::update-w-fc
        (let [{w :w, dw :dw} this
