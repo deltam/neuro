@@ -1,6 +1,7 @@
 (ns mnist.proto
   "ためしにいちから実装してみる
   http://nnadl-ja.github.io/nnadl_site_ja/chap1.html"
+  (:require [taoensso.tufte :as tufte :refer (p)])
   (:require [neuro.vol :as vl]
             [mnist.data :as md]))
 
@@ -61,16 +62,17 @@
 (defn update-eta [rate] (fn [p dp] (- p (* dp rate))))
 
 (defn update-mini-batch [nn mini-batch eta]
-  (let [bpv (pmap (fn [[in out]] (backprop nn in out))
-                  mini-batch)
-        [acm-b acm-w] (reduce (fn [[rb rw] [db dw]]
-                                [(map vl/w+ rb db)
-                                 (map vl/w+ rw dw)])
-                              bpv)
-        n (count mini-batch)]
-    (assoc nn
-           :biases (map #(vl/map-w (update-eta (/ eta n)) %1 %2) (:biases nn) acm-b)
-           :weights (map #(vl/map-w (update-eta (/ eta n)) %1 %2) (:weights nn) acm-w))))
+  (p ::update-mini-batch
+     (let [bpv (pmap (fn [[in out]] (backprop nn in out))
+                     mini-batch)
+           [acm-b acm-w] (reduce (fn [[rb rw] [db dw]]
+                                   [(map vl/w+ rb db)
+                                    (map vl/w+ rw dw)])
+                                 bpv)
+           n (count mini-batch)]
+       (assoc nn
+              :biases (map #(vl/map-w (update-eta (/ eta n)) %1 %2) (:biases nn) acm-b)
+              :weights (map #(vl/map-w (update-eta (/ eta n)) %1 %2) (:weights nn) acm-w)))))
 
 
 (defn cost-derivative [nn act out]
