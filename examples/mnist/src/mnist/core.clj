@@ -1,12 +1,11 @@
 (ns mnist.core
   (:require [mnist.data :as md]
-            [neuro.layer :as ly]
-            [neuro.network :as nw]
+            [neuro.core :as nc]
             [neuro.train :as nt]
             [clojure.java.shell :refer (sh)]))
 
 (def net
-  (nw/gen-net
+  (nc/gen-net
    :input 784 :fc
    :sigmoid 30 :fc
    :softmax 10))
@@ -31,7 +30,7 @@
     (printf "epoch %d: %d / %d  (%4.2f min)\n" ep ok n (float (/ elapsed 60000.0)))
     (flush)
     (reset! start-time-now-epoch (System/currentTimeMillis))
-    (sh "say" (str "epoc " ep " " (float (* 100 (/ ok n))))) ; for mac user
+;    (sh "say" (str "epoc " ep " " (float (* 100 (/ ok n))))) ; for mac user
     ))
 
 
@@ -39,12 +38,12 @@
   ([] (train net))
   ([net]
    (reset! start-time-now-epoch (System/currentTimeMillis))
-   (nt/init)
-   (nt/with-params [:mini-batch-size 20
+   (nc/init)
+   (nc/with-params [:mini-batch-size 20
                     :epoch-limit 30
                     :learning-rate 1.0
                     :epoch-reporter report]
-     (nt/sgd net train-data))))
+     (nc/sgd net train-data))))
 
 
 (defn print-time-to-next-epoch []
