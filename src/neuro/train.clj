@@ -1,5 +1,5 @@
 (ns neuro.train
-  (:require [taoensso.tufte :as tufte :refer (p)])
+  (:require [taoensso.tufte :refer (p)])
   (:require [neuro.layer :as ly]
             [neuro.network :as nw]))
 
@@ -14,6 +14,7 @@
    :epoch-reporter (fn [epoch net] nil)})
 
 (defmacro with-params
+  "specified train parameters"
   [params-vec train-expr]
   (let [conf (merge *train-params* (apply hash-map params-vec))]
     `(binding [*train-params* ~conf]
@@ -21,11 +22,11 @@
 
 
 ;; train current status
-(def *now-epoch* (atom 0))
-(def *now-net* (atom nil))
-(def *train-loss-history* (atom []))
-(def *test-loss-history* (atom []))
-(def *num-batchs* (atom 0))
+(def ^:dynamic *now-epoch* (atom 0))
+(def ^:dynamic *now-net* (atom nil))
+(def ^:dynamic *train-loss-history* (atom []))
+(def ^:dynamic *test-loss-history* (atom []))
+(def ^:dynamic *num-batchs* (atom 0))
 
 (defn init []
   (reset! *now-epoch* 0)
