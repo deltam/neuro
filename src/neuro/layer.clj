@@ -1,6 +1,5 @@
 (ns neuro.layer
-  (:require [neuro.vol :as vl]
-            [neuro.func :as fnc]))
+  (:require [neuro.vol :as vl]))
 
 (defprotocol Layer
   "Neural Network Layer"
@@ -77,15 +76,18 @@
 
 ;; activation layer
 
+(defn- sigmoid-f [x] (/ 1.0 (+ 1.0 (Math/exp (- x)))))
+(defn- sigmoid-df [y] (* y (- 1 y)))
+
 (defrecord Sigmoid [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
     (assoc this :out-vol
-           (vl/map-w fnc/sigmoid in-vol)))
+           (vl/map-w sigmoid-f in-vol)))
   (backward [this delta-vol]
     (let [y (:out-vol this)]
       (assoc this :delta-vol
-             (vl/w* (vl/map-w fnc/d-sigmoid y) delta-vol))))
+             (vl/w* (vl/map-w sigmoid-df y) delta-vol))))
   (update-w [this f] this)
   (merge-w [this other] this)
   (map-w [this f] this))
@@ -96,15 +98,18 @@
 
 
 
+(defn- relu-f [x] (max x 0))
+(defn- relu-df [x] (if (< 0 x) 1 0))
+
 (defrecord ReLU [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
     (assoc this :out-vol
-           (vl/map-w fnc/relu in-vol)))
+           (vl/map-w relu-f in-vol)))
   (backward [this delta-vol]
     (let [y (:out-vol this)]
       (assoc this :delta-vol
-             (vl/w* (vl/map-w fnc/d-relu y) delta-vol))))
+             (vl/w* (vl/map-w relu-df y) delta-vol))))
   (update-w [this f] this)
   (merge-w [this other] this)
   (map-w [this f] this))
@@ -115,15 +120,18 @@
 
 
 
+(defn- tanh-f [x] (Math/tanh x))
+(defn- tanh-df [y] (- 1 (* y y)))
+
 (defrecord Tanh [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
     (assoc this :out-vol
-           (vl/map-w fnc/tanh in-vol)))
+           (vl/map-w tanh-f in-vol)))
   (backward [this delta-vol]
     (let [y (:out-vol this)]
       (assoc this :delta-vol
-             (vl/w* (vl/map-w fnc/d-tanh y) delta-vol))))
+             (vl/w* (vl/map-w tanh-df y) delta-vol))))
   (update-w [this f] this)
   (merge-w [this other] this)
   (map-w [this f] this))
@@ -138,7 +146,7 @@
 
 ;; loss layer
 
-(defn- normalize
+(defn- clip
   "1e-10 - 1.0 の間に重みを正規化"
   [v]
   (let [wmax (vl/w-max v)
@@ -150,7 +158,7 @@
   [train-vol out-vol]
   (- (vl/reduce-elm + (vl/map-w (fn [d y] (* d (Math/log y)))
                                 train-vol
-                                (normalize out-vol)))))
+                                (clip out-vol)))))
 
 (defrecord Softmax [out out-vol delta-vol loss]
   Layer
