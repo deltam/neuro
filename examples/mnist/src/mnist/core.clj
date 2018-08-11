@@ -24,12 +24,12 @@
 (def ^:private start-time-now-epoch (atom 0))
 
 (defn report [ep net]
+  (reset! start-time-now-epoch (System/currentTimeMillis))
   (let [ok (evaluate net test-data)
         n (count test-data)
         elapsed (- (System/currentTimeMillis) @start-time-now-epoch)]
     (printf "epoch %d: %d / %d  (%4.2f min)\n" ep ok n (float (/ elapsed 60000.0)))
     (flush)
-    (reset! start-time-now-epoch (System/currentTimeMillis))
 ;    (sh "say" (str "epoc " ep " " (float (* 100 (/ ok n))))) ; for mac user
     ))
 
