@@ -1,5 +1,4 @@
 (ns neuro.train
-  (:require [taoensso.tufte :refer (p)])
   (:require [neuro.layer :as ly]
             [neuro.network :as nw]))
 
@@ -66,8 +65,8 @@
 (defn backprop
   "誤差逆伝播法でネットを更新する"
   [net in-vol train-vol updater]
-  (let [net-f (p ::forward (ly/forward net in-vol))
-        net-b (p ::backward (ly/backward net-f train-vol))]
+  (let [net-f (ly/forward net in-vol)
+        net-b (ly/backward net-f train-vol)]
     (ly/update-w net-b updater)))
 
 (defn backprop-n

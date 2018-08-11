@@ -1,6 +1,5 @@
 (ns neuro.vol
   "NNの最小構成要素"
-  (:require [taoensso.tufte :refer (p)])
   (:require [clojure.data.generators :as gr]))
 
 
@@ -54,60 +53,56 @@
 (defn dot
   "w行列の掛け算"
   [v1 v2]
-  (p ::dot
-     (vol (:sx v2) (:sy v1)
-          (let [v1-y-range (range (:sy v1))
-                v1-rows (mapv (fn [y] (map #(wget v1 % y) (range (:sx v1))))
-                              v1-y-range)
-                v2-x-range (range (:sx v2))
-                v2-cols (mapv (fn [x] (map #(wget v2 x %) (range (:sy v2))))
-                              v2-x-range)
-                xy (for [y (range (:sy v1)), x (range (:sx v2))]
-                     [x y])]
-            (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
-                  xy)))))
+  (vol (:sx v2) (:sy v1)
+       (let [v1-y-range (range (:sy v1))
+             v1-rows (mapv (fn [y] (map #(wget v1 % y) (range (:sx v1))))
+                           v1-y-range)
+             v2-x-range (range (:sx v2))
+             v2-cols (mapv (fn [x] (map #(wget v2 x %) (range (:sy v2))))
+                           v2-x-range)
+             xy (for [y (range (:sy v1)), x (range (:sx v2))]
+                  [x y])]
+         (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
+               xy))))
 
 (defn dot-Tv-v
   "(dot (T v1) v2)"
   [v1 v2]
-  (p ::dot-Tv-v
-     (vol (:sx v2) (:sx v1)
-          (let [v1-y-range (range (:sx v1))
-                v1-rows (mapv (fn [y] (map #(wget v1 y %) (range (:sy v1))))
-                              v1-y-range)
-                v2-x-range (range (:sx v2))
-                v2-cols (mapv (fn [x] (map #(wget v2 x %) (range (:sy v2))))
-                              v2-x-range)
-                xy (for [y (range (:sx v1)), x (range (:sx v2))]
-                     [x y])]
-            (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
-                  xy)))))
+  (vol (:sx v2) (:sx v1)
+       (let [v1-y-range (range (:sx v1))
+             v1-rows (mapv (fn [y] (map #(wget v1 y %) (range (:sy v1))))
+                           v1-y-range)
+             v2-x-range (range (:sx v2))
+             v2-cols (mapv (fn [x] (map #(wget v2 x %) (range (:sy v2))))
+                           v2-x-range)
+             xy (for [y (range (:sx v1)), x (range (:sx v2))]
+                  [x y])]
+         (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
+               xy))))
 
 (defn dot-v-Tv
   "(dot v1 (T v2))"
   [v1 v2]
-  (p ::dot-v-Tv
-     (vol (:sy v2) (:sy v1)
-          (let [v1-y-range (range (:sy v1))
-                v1-rows (mapv (fn [y] (map #(wget v1 % y) (range (:sx v1))))
-                              v1-y-range)
-                v2-x-range (range (:sy v2))
-                v2-cols (mapv (fn [x] (map #(wget v2 % x) (range (:sx v2))))
-                              v2-x-range)
-                xy (for [y (range (:sy v1)), x (range (:sy v2))]
-                     [x y])]
-            (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
-                  xy)))))
+  (vol (:sy v2) (:sy v1)
+       (let [v1-y-range (range (:sy v1))
+             v1-rows (mapv (fn [y] (map #(wget v1 % y) (range (:sx v1))))
+                           v1-y-range)
+             v2-x-range (range (:sy v2))
+             v2-cols (mapv (fn [x] (map #(wget v2 % x) (range (:sx v2))))
+                           v2-x-range)
+             xy (for [y (range (:sy v1)), x (range (:sy v2))]
+                  [x y])]
+         (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
+               xy))))
 
 
 (defn T
   "転置行列"
   [v]
-  (p ::T
-     (vol (:sy v) (:sx v)
-          (let [xy (for [x (range (:sx v)), y (range (:sy v))]
-                     [x y])]
-            (mapv (fn [[x y]] (wget v x y)) xy)))))
+  (vol (:sy v) (:sx v)
+       (let [xy (for [x (range (:sx v)), y (range (:sy v))]
+                  [x y])]
+         (mapv (fn [[x y]] (wget v x y)) xy))))
 
 (defn w-sum-row
   "行を足し合わせて1xNの行列にする"

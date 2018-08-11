@@ -1,5 +1,4 @@
 (ns neuro.layer
-  (:require [taoensso.tufte :as tufte :refer (p)])
   (:require [neuro.vol :as vl]
             [neuro.func :as fnc]))
 
@@ -32,40 +31,35 @@
 (defrecord FullConn [in out w bias in-vol out-vol dw dbias delta-vol]
   Layer
   (forward [this in-vol]
-    (p ::forward-fc
-       (let [{w :w, bias :bias} this]
-         (assoc this
-                :in-vol in-vol
-                :out-vol (vl/w+ (vl/dot w in-vol) bias)))))
+    (let [{w :w, bias :bias} this]
+      (assoc this
+             :in-vol in-vol
+             :out-vol (vl/w+ (vl/dot w in-vol) bias))))
   (backward [this grad-vol]
-    (p ::backward-fc
-       (assoc this
-              :dw (vl/dot-v-Tv grad-vol (:in-vol this))
-              :dbias grad-vol
-              :delta-vol (vl/dot-Tv-v (:w this) grad-vol))))
+    (assoc this
+           :dw (vl/dot-v-Tv grad-vol (:in-vol this))
+           :dbias grad-vol
+           :delta-vol (vl/dot-Tv-v (:w this) grad-vol)))
   (update-w [this f]
-    (p ::update-w-fc
-       (let [{w :w, dw :dw} this
-             {b :bias, db :dbias} this]
-         (assoc this
-                :w (vl/map-w f w dw)
-                :bias (vl/map-w f b db)))))
+    (let [{w :w, dw :dw} this
+          {b :bias, db :dbias} this]
+      (assoc this
+             :w (vl/map-w f w dw)
+             :bias (vl/map-w f b db))))
   (merge-w [this other]
-    (p ::merge-w-fc
-       (let [w1 (:w this)
-             bias1 (:bias this)
-             w2 (:w other)
-             bias2 (:bias other)]
-         (assoc this
-                :w (vl/w+ w1 w2)
-                :bias (vl/w+ bias1 bias2)))))
+    (let [w1 (:w this)
+          bias1 (:bias this)
+          w2 (:w other)
+          bias2 (:bias other)]
+      (assoc this
+             :w (vl/w+ w1 w2)
+             :bias (vl/w+ bias1 bias2))))
   (map-w [this f]
-    (p ::map-w-fc
-       (let [w (:w this)
-             bias (:bias this)]
-         (assoc this
-                :w (vl/map-w f w)
-                :bias (vl/map-w f bias))))))
+    (let [w (:w this)
+          bias (:bias this)]
+      (assoc this
+             :w (vl/map-w f w)
+             :bias (vl/map-w f bias)))))
 
 (defn fc
   [in out]
@@ -86,14 +80,12 @@
 (defrecord Sigmoid [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
-    (p ::forward-sigmoid
-       (assoc this :out-vol
-              (vl/map-w fnc/sigmoid in-vol))))
+    (assoc this :out-vol
+           (vl/map-w fnc/sigmoid in-vol)))
   (backward [this delta-vol]
-    (p ::backward-sigmoid
-       (let [y (:out-vol this)]
-         (assoc this :delta-vol
-                (vl/w* (vl/map-w fnc/d-sigmoid y) delta-vol)))))
+    (let [y (:out-vol this)]
+      (assoc this :delta-vol
+             (vl/w* (vl/map-w fnc/d-sigmoid y) delta-vol))))
   (update-w [this f] this)
   (merge-w [this other] this)
   (map-w [this f] this))
@@ -163,22 +155,19 @@
 (defrecord Softmax [out out-vol delta-vol loss]
   Layer
   (forward [this in-vol]
-    (p ::forward-softmax
-       (let [wm (vl/w-max in-vol)
-             es (vl/map-w #(Math/exp (- % wm)) in-vol)
-             sum (vl/reduce-elm + es)]
-         (assoc this :out-vol
-                (vl/map-w #(/ % sum) es)))))
+    (let [wm (vl/w-max in-vol)
+          es (vl/map-w #(Math/exp (- % wm)) in-vol)
+          sum (vl/reduce-elm + es)]
+      (assoc this :out-vol
+             (vl/map-w #(/ % sum) es))))
   (backward [this answer-vol]
-    (p ::backward-softmax
-       (assoc this
-              :delta-vol (vl/w- (:out-vol this) answer-vol)
-              :loss (cross-entropy answer-vol (:out-vol this)))))
+    (assoc this
+           :delta-vol (vl/w- (:out-vol this) answer-vol)
+           :loss (cross-entropy answer-vol (:out-vol this))))
   (update-w [this f] this)
   (merge-w [this other]
-    (p ::merge-w-softmax
-       (assoc this :loss
-              (+ (:loss this) (:loss other)))))
+    (assoc this :loss
+           (+ (:loss this) (:loss other))))
   (map-w [this f] this))
 
 (defn softmax

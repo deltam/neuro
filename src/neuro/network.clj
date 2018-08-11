@@ -1,5 +1,4 @@
 (ns neuro.network
-  (:require [taoensso.tufte :as tufte :refer (p)])
   (:require [neuro.layer :as ly]))
 
 
@@ -8,29 +7,24 @@
 (defrecord Network [layer]
   ly/Layer
   (forward [this in-vol]
-    (p ::forward-network
-       (assoc this :layer
-              (map-with-args ly/forward (:layer this) in-vol :out-vol))))
+    (assoc this :layer
+           (map-with-args ly/forward (:layer this) in-vol :out-vol)))
   (backward [this delta-vol]
-    (p ::backward-network
-       (let [back-layer (reverse (:layer this))]
-         (assoc this :layer
-                (reverse
-                 (map-with-args ly/backward back-layer delta-vol :delta-vol))))))
+    (let [back-layer (reverse (:layer this))]
+      (assoc this :layer
+             (reverse
+              (map-with-args ly/backward back-layer delta-vol :delta-vol)))))
   (update-w [this f]
-    (p ::update-w-network
-       (let [layers (:layer this)
-             updated (map #(ly/update-w % f) layers)]
-         (assoc this :layer updated))))
+    (let [layers (:layer this)
+          updated (map #(ly/update-w % f) layers)]
+      (assoc this :layer updated)))
   (merge-w [this other]
-    (p ::merge-w-network
-       (assoc this :layer
-              (map ly/merge-w (:layer this) (:layer other)))))
+    (assoc this :layer
+           (map ly/merge-w (:layer this) (:layer other))))
   (map-w [this f]
-    (p ::map-w-network
-       (assoc this :layer
-              (map #(ly/map-w % f)
-                   (:layer this))))))
+    (assoc this :layer
+           (map #(ly/map-w % f)
+                (:layer this)))))
 
 
 (defn network [& layers]
