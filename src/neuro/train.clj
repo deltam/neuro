@@ -73,7 +73,7 @@
 (defn backprop-n
   "複数の入力ー回答データに対して誤差逆伝播法を適用する"
   [net train-pairs]
-  (let [merged (reduce ly/merge-w
+  (let [merged (reduce ly/merge-p
                        (pmap (fn [[in-vol answer-vol]]
                               (backprop net in-vol answer-vol))
                             train-pairs))
@@ -85,7 +85,7 @@
 
 (defn update-mini-batch
   [net batch]
-  (ly/update-w (backprop-n net batch)
+  (ly/update-p (backprop-n net batch)
                (gen-w-updater (count batch))))
 
 (defn reduce-mini-batchs

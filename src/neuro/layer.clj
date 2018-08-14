@@ -4,11 +4,14 @@
 (defprotocol Layer
   "Neural Network Layer"
   (forward [this in-vol] "feedfoward")
-  (backward [this delta-vol] "use backprop")
+  (backward [this grad-vol] "use backprop")
   (output [this] "output by feedforward")
-  (grad [this] "grad by backward")
-  (update-w [this f] "update weights")
-  (merge-w [this other] "merge-w 2 layer"))
+  (grad [this] "grad by backward"))
+
+(defprotocol Params
+  "Neural Network Layer that has parameters to be aggregated"
+  (update-p [this f] "update params")
+  (merge-p [this other] "merge 2 layer"))
 
 
 
@@ -17,11 +20,9 @@
 (defrecord Input [out out-vol]
   Layer
   (forward [this in-vol] (assoc this :out-vol in-vol))
-  (backward [this delta-vol] this)
+  (backward [this grad-vol] this)
   (output [this] (:out-vol this))
-  (grad [this] nil)
-  (update-w [this f] this)
-  (merge-w [this other] this))
+  (grad [this] nil))
 
 (defn input [in]
   (->Input in nil))
@@ -43,13 +44,14 @@
            :delta-vol (vl/dot-Tv-v (:w this) grad-vol)))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
-  (update-w [this f]
+  Params
+  (update-p [this f]
     (let [{w :w, dw :dw} this
           {b :bias, db :dbias} this]
       (assoc this
              :w (vl/map-w f w dw)
              :bias (vl/map-w f b db))))
-  (merge-w [this other]
+  (merge-p [this other]
     (let [{dw1 :dw, dbias1 :dbias} this
           {dw2 :dw, dbias2 :dbias} other]
       (assoc this
@@ -78,16 +80,12 @@
 (defrecord Sigmoid [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
-    (assoc this
-           :out-vol (vl/map-w sigmoid-f in-vol)))
-  (backward [this delta-vol]
+    (assoc this :out-vol (vl/map-w sigmoid-f in-vol)))
+  (backward [this grad-vol]
     (let [y (:out-vol this)]
-      (assoc this
-             :delta-vol (vl/w* (vl/map-w sigmoid-df y) delta-vol))))
+      (assoc this :delta-vol (vl/w* (vl/map-w sigmoid-df y) grad-vol))))
   (output [this] (:out-vol this))
-  (grad [this] (:delta-vol this))
-  (update-w [this f] this)
-  (merge-w [this other] this))
+  (grad [this] (:delta-vol this)))
 
 (defn sigmoid
   [in]
@@ -103,14 +101,11 @@
   (forward [this in-vol]
     (assoc this
            :out-vol (vl/map-w relu-f in-vol)))
-  (backward [this delta-vol]
+  (backward [this grad-vol]
     (let [y (:out-vol this)]
-      (assoc this
-             :delta-vol (vl/w* (vl/map-w relu-df y) delta-vol))))
+      (assoc this :delta-vol (vl/w* (vl/map-w relu-df y) grad-vol))))
   (output [this] (:out-vol this))
-  (grad [this] (:delta-vol this))
-  (update-w [this f] this)
-  (merge-w [this other] this))
+  (grad [this] (:delta-vol this)))
 
 (defn relu
   [in]
@@ -124,16 +119,12 @@
 (defrecord Tanh [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
-    (assoc this
-           :out-vol (vl/map-w tanh-f in-vol)))
-  (backward [this delta-vol]
+    (assoc this :out-vol (vl/map-w tanh-f in-vol)))
+  (backward [this grad-vol]
     (let [y (:out-vol this)]
-      (assoc this
-             :delta-vol (vl/w* (vl/map-w tanh-df y) delta-vol))))
+      (assoc this :delta-vol (vl/w* (vl/map-w tanh-df y) grad-vol))))
   (output [this] (:out-vol this))
-  (grad [this] (:delta-vol this))
-  (update-w [this f] this)
-  (merge-w [this other] this))
+  (grad [this] (:delta-vol this)))
 
 (defn tanh
   [in]
@@ -154,9 +145,9 @@
 
 (defn- cross-entropy
   "cross-entropy 誤差関数"
-  [train-vol out-vol]
+  [answer-vol out-vol]
   (- (vl/reduce-elm + (vl/map-w (fn [d y] (* d (Math/log y)))
-                                train-vol
+                                answer-vol
                                 (clip out-vol)))))
 
 (defrecord Softmax [out out-vol delta-vol loss]
@@ -173,8 +164,9 @@
            :loss (cross-entropy answer-vol (:out-vol this))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
-  (update-w [this f] this)
-  (merge-w [this other]
+  Params
+  (update-p [this f] this)
+  (merge-p [this other]
     (assoc this
            :loss (+ (:loss this) (:loss other)))))
 

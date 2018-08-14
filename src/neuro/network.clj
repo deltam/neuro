@@ -7,24 +7,26 @@
 (defrecord Network [layer]
   ly/Layer
   (forward [this in-vol]
-    (assoc this :layer
-           (map-with-args ly/forward (:layer this) in-vol ly/output)))
-  (backward [this delta-vol]
+    (assoc this :layer (map-with-args ly/forward (:layer this) in-vol ly/output)))
+  (backward [this answer-vol]
     (let [back-layer (reverse (:layer this))]
-      (assoc this :layer
-             (reverse
-              (map-with-args ly/backward back-layer delta-vol ly/grad)))))
+      (assoc this :layer (reverse
+                          (map-with-args ly/backward back-layer answer-vol ly/grad)))))
   (output [this]
     (let [out-layer (last (:layer this))]
       (ly/output out-layer)))
   (grad [this] (map ly/grad (:layer this)))
-  (update-w [this f]
-    (let [layers (:layer this)
-          updated (map #(ly/update-w % f) layers)]
-      (assoc this :layer updated)))
-  (merge-w [this other]
-    (assoc this :layer
-           (map ly/merge-w (:layer this) (:layer other)))))
+  ly/Params
+  (update-p [this f]
+    (assoc this :layer (map #(if (satisfies? ly/Params %)
+                               (ly/update-p % f)
+                               %)
+                            (:layer this))))
+  (merge-p [this other]
+    (assoc this :layer (map #(if (satisfies? ly/Params %1)
+                               (ly/merge-p %1 %2)
+                               %1)
+                            (:layer this) (:layer other)))))
 
 
 (defn network [& layers]
