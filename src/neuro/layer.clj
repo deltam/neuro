@@ -5,9 +5,10 @@
   "Neural Network Layer"
   (forward [this in-vol] "feedfoward")
   (backward [this delta-vol] "use backprop")
+  (output [this] "output by feedforward")
+  (grad [this] "grad by backward")
   (update-w [this f] "update weights")
-  (merge-w [this other] "merge-w 2 layer")
-  (map-w [this f] "map f weights"))
+  (merge-w [this other] "merge-w 2 layer"))
 
 
 
@@ -17,9 +18,10 @@
   Layer
   (forward [this in-vol] (assoc this :out-vol in-vol))
   (backward [this delta-vol] this)
+  (output [this] (:out-vol this))
+  (grad [this] nil)
   (update-w [this f] this)
-  (merge-w [this other] this)
-  (map-w [this f] this))
+  (merge-w [this other] this))
 
 (defn input [in]
   (->Input in nil))
@@ -39,6 +41,8 @@
            :dw (vl/dot-v-Tv grad-vol (:in-vol this))
            :dbias grad-vol
            :delta-vol (vl/dot-Tv-v (:w this) grad-vol)))
+  (output [this] (:out-vol this))
+  (grad [this] (:delta-vol this))
   (update-w [this f]
     (let [{w :w, dw :dw} this
           {b :bias, db :dbias} this]
@@ -82,15 +86,16 @@
 (defrecord Sigmoid [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
-    (assoc this :out-vol
-           (vl/map-w sigmoid-f in-vol)))
+    (assoc this
+           :out-vol (vl/map-w sigmoid-f in-vol)))
   (backward [this delta-vol]
     (let [y (:out-vol this)]
-      (assoc this :delta-vol
-             (vl/w* (vl/map-w sigmoid-df y) delta-vol))))
+      (assoc this
+             :delta-vol (vl/w* (vl/map-w sigmoid-df y) delta-vol))))
+  (output [this] (:out-vol this))
+  (grad [this] (:delta-vol this))
   (update-w [this f] this)
-  (merge-w [this other] this)
-  (map-w [this f] this))
+  (merge-w [this other] this))
 
 (defn sigmoid
   [in]
@@ -104,15 +109,16 @@
 (defrecord ReLU [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
-    (assoc this :out-vol
-           (vl/map-w relu-f in-vol)))
+    (assoc this
+           :out-vol (vl/map-w relu-f in-vol)))
   (backward [this delta-vol]
     (let [y (:out-vol this)]
-      (assoc this :delta-vol
-             (vl/w* (vl/map-w relu-df y) delta-vol))))
+      (assoc this
+             :delta-vol (vl/w* (vl/map-w relu-df y) delta-vol))))
+  (output [this] (:out-vol this))
+  (grad [this] (:delta-vol this))
   (update-w [this f] this)
-  (merge-w [this other] this)
-  (map-w [this f] this))
+  (merge-w [this other] this))
 
 (defn relu
   [in]
@@ -126,15 +132,16 @@
 (defrecord Tanh [out out-vol delta-vol]
   Layer
   (forward [this in-vol]
-    (assoc this :out-vol
-           (vl/map-w tanh-f in-vol)))
+    (assoc this
+           :out-vol (vl/map-w tanh-f in-vol)))
   (backward [this delta-vol]
     (let [y (:out-vol this)]
-      (assoc this :delta-vol
-             (vl/w* (vl/map-w tanh-df y) delta-vol))))
+      (assoc this
+             :delta-vol (vl/w* (vl/map-w tanh-df y) delta-vol))))
+  (output [this] (:out-vol this))
+  (grad [this] (:delta-vol this))
   (update-w [this f] this)
-  (merge-w [this other] this)
-  (map-w [this f] this))
+  (merge-w [this other] this))
 
 (defn tanh
   [in]
@@ -166,17 +173,18 @@
     (let [wm (vl/w-max in-vol)
           es (vl/map-w #(Math/exp (- % wm)) in-vol)
           sum (vl/reduce-elm + es)]
-      (assoc this :out-vol
-             (vl/map-w #(/ % sum) es))))
+      (assoc this
+             :out-vol (vl/map-w #(/ % sum) es))))
   (backward [this answer-vol]
     (assoc this
            :delta-vol (vl/w- (:out-vol this) answer-vol)
            :loss (cross-entropy answer-vol (:out-vol this))))
+  (output [this] (:out-vol this))
+  (grad [this] (:delta-vol this))
   (update-w [this f] this)
   (merge-w [this other]
-    (assoc this :loss
-           (+ (:loss this) (:loss other))))
-  (map-w [this f] this))
+    (assoc this
+           :loss (+ (:loss this) (:loss other)))))
 
 (defn softmax
   [in]

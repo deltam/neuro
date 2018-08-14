@@ -8,23 +8,23 @@
   ly/Layer
   (forward [this in-vol]
     (assoc this :layer
-           (map-with-args ly/forward (:layer this) in-vol :out-vol)))
+           (map-with-args ly/forward (:layer this) in-vol ly/output)))
   (backward [this delta-vol]
     (let [back-layer (reverse (:layer this))]
       (assoc this :layer
              (reverse
-              (map-with-args ly/backward back-layer delta-vol :delta-vol)))))
+              (map-with-args ly/backward back-layer delta-vol ly/grad)))))
+  (output [this]
+    (let [out-layer (last (:layer this))]
+      (ly/output out-layer)))
+  (grad [this] (map ly/grad (:layer this)))
   (update-w [this f]
     (let [layers (:layer this)
           updated (map #(ly/update-w % f) layers)]
       (assoc this :layer updated)))
   (merge-w [this other]
     (assoc this :layer
-           (map ly/merge-w (:layer this) (:layer other))))
-  (map-w [this f]
-    (assoc this :layer
-           (map #(ly/map-w % f)
-                (:layer this)))))
+           (map ly/merge-w (:layer this) (:layer other)))))
 
 
 (defn network [& layers]
@@ -51,21 +51,13 @@
   [& defs]
   (apply network (apply parse-net defs)))
 
-(declare output)
-
 (defn feedforward
   [net in-vol]
-  (output
-   (ly/forward net in-vol)))
+  (ly/output (ly/forward net in-vol)))
 
 
 
 ;; util
-
-(defn output
-  [net]
-  (let [out-layer (last (:layer net))]
-    (:out-vol out-layer)))
 
 (defn layer
   [net idx]
