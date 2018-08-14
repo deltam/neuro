@@ -89,9 +89,9 @@
 
 (defn- map-with-args
   "ひとつ前の関数適用の結果より引数を抜き出して受け渡しながらmapする"
-  [f coll init-val arg-key]
+  [f coll init-val arg-f]
   (loop [cur (first coll), r (rest coll), done [], v init-val]
     (if (nil? cur)
       done
       (let [next (f cur v)]
-        (recur (first r) (rest r) (conj done next) (arg-key next))))))
+        (recur (first r) (rest r) (conj done next) (arg-f next))))))

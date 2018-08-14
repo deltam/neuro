@@ -100,8 +100,6 @@
   "Stochastic gradient descent"
   [net train-pairs]
   (let [batchs (partition (:mini-batch-size *train-params*) train-pairs)]
-    (reset! *now-net* net)
-    (reset! *now-epoch* 0)
     (reset! *num-batchs* (count batchs))
     (loop [epoch 0, cur net]
       (reset! *now-epoch* epoch)
