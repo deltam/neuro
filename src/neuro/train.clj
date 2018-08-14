@@ -1,4 +1,5 @@
 (ns neuro.train
+;  (:require [taoensso.tufte :as tufte :refer [p]])
   (:require [neuro.layer :as ly]
             [neuro.network :as nw]))
 
@@ -36,11 +37,12 @@
 
 ;; 重み更新関数生成
 (defn gen-w-updater
-  []
+  [mini-batch-size]
   (if-let [f (:updater *train-params*)]
     f
-    (fn [w dw]
-      (- w (* (:learning-rate *train-params*) dw)))))
+    (let [rate (/ (:learning-rate *train-params*) mini-batch-size)]
+      (fn [w dw]
+        (- w (* rate dw))))))
 
 ;(defn- update-by-gradient
 ;  "重みを勾配に従って更新した値を返す"
@@ -64,29 +66,27 @@
 
 (defn backprop
   "誤差逆伝播法でネットを更新する"
-  [net in-vol train-vol updater]
-  (let [net-f (ly/forward net in-vol)
-        net-b (ly/backward net-f train-vol)]
-    (ly/update-w net-b updater)))
+  [net in-vol answer-vol]
+  (let [net-f (ly/forward net in-vol)]
+    (ly/backward net-f answer-vol)))
 
 (defn backprop-n
   "複数の入力ー回答データに対して誤差逆伝播法を適用する"
-  [net train-pairs updater]
-  (let [n (count train-pairs)
-        merged (reduce ly/merge-w
-                       (pmap (fn [[in-vol train-vol]]
-                               (backprop net in-vol train-vol updater))
-                             train-pairs))
-        trained (ly/map-w merged #(/ % n))
-        loss (/ (nw/loss merged) n)]
-    (nw/update-loss trained loss)))
+  [net train-pairs]
+  (let [merged (reduce ly/merge-w
+                       (pmap (fn [[in-vol answer-vol]]
+                              (backprop net in-vol answer-vol))
+                            train-pairs))
+        loss (/ (nw/loss merged) (count train-pairs))]
+    (nw/update-loss merged loss)))
 
 
 ;;; train funcs
 
 (defn update-mini-batch
   [net batch]
-  (backprop-n net batch (gen-w-updater)))
+  (ly/update-w (backprop-n net batch)
+               (gen-w-updater (count batch))))
 
 (defn reduce-mini-batchs
   [init-net batchs]

@@ -50,19 +50,11 @@
              :w (vl/map-w f w dw)
              :bias (vl/map-w f b db))))
   (merge-w [this other]
-    (let [w1 (:w this)
-          bias1 (:bias this)
-          w2 (:w other)
-          bias2 (:bias other)]
+    (let [{dw1 :dw, dbias1 :dbias} this
+          {dw2 :dw, dbias2 :dbias} other]
       (assoc this
-             :w (vl/w+ w1 w2)
-             :bias (vl/w+ bias1 bias2))))
-  (map-w [this f]
-    (let [w (:w this)
-          bias (:bias this)]
-      (assoc this
-             :w (vl/map-w f w)
-             :bias (vl/map-w f bias)))))
+             :dw (vl/w+ dw1 dw2)
+             :dbias (vl/w+ dbias1 dbias2)))))
 
 (defn fc
   [in out]
