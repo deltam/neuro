@@ -5,38 +5,45 @@
 
 
 (def ^:dynamic *train-params*
+  "train hyper parameters"
   {:learning-rate 0.01
    :mini-batch-size 10
    :epoch-limit 10
-   :weight-decay 0.001
-   :momentum 0.6
    :updater nil
    :epoch-reporter (fn [epoch net] nil)})
+
+(defn new-status []
+  "Generate train progress status"
+  {:now-epoch 0
+   :now-net nil
+   :num-batchs 0
+   :train-loss-history []})
+
+(def ^:dynamic *train-status*
+  "train progress status"
+  (atom (new-status)))
+
+(defn init! []
+  (reset! *train-status* (new-status)))
+
+(defn- add-train-loss! [loss]
+  (swap! *train-status* assoc :train-loss-history (conj (:train-loss-history @*train-status*) loss)))
+
 
 (defmacro with-params
   "specified train parameters"
   [params-vec train-expr]
-  (let [conf (merge *train-params* (apply hash-map params-vec))]
-    `(binding [*train-params* ~conf]
+  (let [pm (apply hash-map params-vec)
+        conf (merge *train-params* (dissoc pm :train-status-var))
+        train-status-bind (if (:train-status-var pm) `(*train-status* ~(:train-status-var pm)))]
+    `(binding [*train-params* ~conf
+               ~@train-status-bind]
        ~train-expr)))
 
 
-;; train current status
-(def ^:dynamic *now-epoch* (atom 0))
-(def ^:dynamic *now-net* (atom nil))
-(def ^:dynamic *train-loss-history* (atom []))
-(def ^:dynamic *test-loss-history* (atom []))
-(def ^:dynamic *num-batchs* (atom 0))
 
-(defn init []
-  (reset! *now-epoch* 0)
-  (reset! *now-net* nil)
-  (reset! *train-loss-history* [])
-  (reset! *test-loss-history* []))
-
-
-;; 重み更新関数生成
 (defn gen-w-updater
+  "generate updater for weights and biases"
   [mini-batch-size]
   (if-let [f (:updater *train-params*)]
     f
@@ -44,34 +51,18 @@
       (fn [w dw]
         (- w (* rate dw))))))
 
-;(defn- update-by-gradient
-;  "重みを勾配に従って更新した値を返す"
-;  [w grad bias?]
-;  (let [de (if bias? grad
-;               (* grad (* *weight-decay-param* w)))]
-;    (- w (* @+learning-rate* de))))
-
-;(defn- momentum
-;  "モメンタム項の計算"
-;  [pre-nn cur-nn nn]
-;  (nw/map-nn (fn [l i o w]
-;               (let [dw ( - (nw/wget cur-nn l i o)
-;                            (nw/wget pre-nn l i o))]
-;                 (* w (* *momentum-param* dw))))
-;             nn))
-
 
 
 ;;; backpropagation
 
 (defn backprop
-  "誤差逆伝播法でネットを更新する"
+  "do backpropagation of 1 train-pair"
   [net in-vol answer-vol]
   (let [net-f (ly/forward net in-vol)]
     (ly/backward net-f answer-vol)))
 
 (defn backprop-n
-  "複数の入力ー回答データに対して誤差逆伝播法を適用する"
+  "do backpropagation of multiple train-pairs"
   [net train-pairs]
   (let [merged (reduce ly/merge-p
                        (pmap (fn [[in-vol answer-vol]]
@@ -91,7 +82,7 @@
 (defn reduce-mini-batchs
   [init-net batchs]
   (reduce (fn [net b]
-            (swap! *train-loss-history* conj (nw/loss net))
+            (add-train-loss! (nw/loss net))
             (update-mini-batch net b))
           init-net
           batchs))
@@ -100,10 +91,10 @@
   "Stochastic gradient descent"
   [net train-pairs]
   (let [batchs (partition (:mini-batch-size *train-params*) train-pairs)]
-    (reset! *num-batchs* (count batchs))
+    (swap! *train-status* assoc :num-batchs (count batchs))
     (loop [epoch 0, cur net]
-      (reset! *now-epoch* epoch)
-      (reset! *now-net* cur)
+      (swap! *train-status* assoc :now-epoch epoch)
+      (swap! *train-status* assoc :now-net cur)
       (future ((:epoch-reporter *train-params*) epoch cur))
       (if (< epoch (:epoch-limit *train-params*))
         (recur (inc epoch) (reduce-mini-batchs cur batchs))

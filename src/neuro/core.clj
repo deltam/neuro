@@ -13,5 +13,5 @@
 (defalias gen-net nw/gen-net)
 (defalias feedforward nw/feedforward)
 (defalias with-params tr/with-params)
-(defalias init tr/init)
+(defalias init! tr/init!)
 (defalias sgd tr/sgd)

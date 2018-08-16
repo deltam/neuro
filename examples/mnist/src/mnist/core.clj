@@ -2,7 +2,7 @@
   (:require [mnist.data :as md]
             [neuro.core :as nc]
             [neuro.train :as nt]
-            [clojure.java.shell :refer (sh)]))
+            [clojure.java.shell :refer [sh]]))
 
 (def net
   (nc/gen-net
@@ -34,12 +34,15 @@
     ))
 
 
+(def *mnist-train-status* (atom nil))
+
 (defn train
   ([] (train net))
   ([net]
    (reset! start-time-now-epoch (System/currentTimeMillis))
-   (nc/init)
-   (nc/with-params [:mini-batch-size 20
+   (reset! *mnist-train-status* (nt/new-status))
+   (nc/with-params [:train-status-var *mnist-train-status*
+                    :mini-batch-size 20
                     :epoch-limit 30
                     :learning-rate 1.0
                     :epoch-reporter report]
@@ -47,11 +50,12 @@
 
 
 (defn print-time-to-next-epoch []
-  (let [done-batchs (mod (count @nt/*train-loss-history*) @nt/*num-batchs*)
+  (let [{nb :num-batchs, tlh :train-loss-history} @*mnist-train-status*
+        done-batchs (mod (count tlh) nb)
         now-elapsed (- (System/currentTimeMillis) @start-time-now-epoch)
         msec-per-batch (if (zero? done-batchs)
                          now-elapsed
                          (/ now-elapsed done-batchs))
-        until-msec (* (- @nt/*num-batchs* done-batchs) msec-per-batch)]
+        until-msec (* (- nb done-batchs) msec-per-batch)]
     (printf "start next epoch at %4.2f min later\n"
             (float (/ until-msec 60000)))))
