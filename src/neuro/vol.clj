@@ -1,14 +1,26 @@
 (ns neuro.vol
-  "NNの最小構成要素"
-  (:require [clojure.data.generators :as gr]))
+  "Matrix for Neural Network")
 
 
 ;; util
 (defn fill-vec [len fill] (vec (repeat len fill)))
 (defn zero-vec [len] (fill-vec len 0.0))
-(defn rand-vec [len]
-  (binding [gr/*rnd* (java.util.Random. (System/currentTimeMillis))]
-    (vec (repeatedly len (fn [] (- (gr/double) 0.5))))))
+
+(defn gauss-vec
+  "Random numbers in accordance with Gaussian distribution"
+  [len c]
+  (let [rnd (java.util.Random. (System/currentTimeMillis))]
+    (vec (repeatedly len (fn [] (* c (.nextGaussian rnd)))))))
+
+(defn xavier-vec
+  "Random numbers for Xavier initilization"
+  [len num-nodes]
+  (gauss-vec len (/ 1.0 (Math/sqrt num-nodes))))
+
+(defn he-vec
+  "Random numbers for He initilization"
+  [len num-nodes]
+  (gauss-vec len (/ 2.0 (Math/sqrt num-nodes))))
 
 (defn- xy->i
   "2次元から1次元への座標変換"
@@ -23,7 +35,7 @@
   ([ix iy wv]
    (->VecVol ix iy wv))
   ([ix iy]
-   (vol ix iy (rand-vec (* ix iy))))
+   (vol ix iy (xavier-vec (* ix iy) ix)))
   ([wv] ; 1 dim
    (vol 1 (count wv) wv)))
 
