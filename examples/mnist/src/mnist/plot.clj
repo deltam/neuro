@@ -9,7 +9,7 @@
 
 
 (defn plot-train [& opts]
-  (let [{ep :now-epoch, tlh :train-loss-history} @core/*mnist-train-status*]
+  (let [{ep :now-epoch, tlh :train-loss-history} @core/mnist-train-status]
     (printf "epoch %d, last loss %f\n" ep (last tlh))
     (apply plot/list-plot
            (take-last 100 tlh)
@@ -20,7 +20,7 @@
 (defn rand-check-view [& opts]
   (let [[img-vol digit-vol] (rand-nth test-data)
         digit (md/vol->digit digit-vol)
-        result (md/vol->digit (nw/feedforward (:now-net @core/*mnist-train-status*) img-vol))]
+        result (md/vol->digit (nw/feedforward (:now-net @core/mnist-train-status) img-vol))]
     (if (= digit result)
       (println "Succeed!" digit)
       (println "Failed!  label" digit "!=" "result" result))

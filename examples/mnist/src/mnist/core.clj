@@ -34,14 +34,14 @@
     ))
 
 
-(def *mnist-train-status* (atom nil))
+(def mnist-train-status (atom nil))
 
 (defn train
   ([] (train net))
   ([net]
    (reset! start-time-now-epoch (System/currentTimeMillis))
-   (reset! *mnist-train-status* (nt/new-status))
-   (nc/with-params [:train-status-var *mnist-train-status*
+   (reset! mnist-train-status (nt/new-status))
+   (nc/with-params [:train-status-var mnist-train-status
                     :mini-batch-size 20
                     :epoch-limit 30
                     :learning-rate 1.0
@@ -50,7 +50,7 @@
 
 
 (defn print-time-to-next-epoch []
-  (let [{nb :num-batchs, tlh :train-loss-history} @*mnist-train-status*
+  (let [{nb :num-batchs, tlh :train-loss-history} @mnist-train-status
         done-batchs (mod (count tlh) nb)
         now-elapsed (- (System/currentTimeMillis) @start-time-now-epoch)
         msec-per-batch (if (zero? done-batchs)
