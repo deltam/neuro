@@ -1,4 +1,5 @@
 (ns neuro.network
+  (:require [taoensso.tufte :refer [p]])
   (:require [neuro.layer :as ly]))
 
 
@@ -26,7 +27,17 @@
     (assoc this :layer (map #(if (satisfies? ly/Optimizable %1)
                                (ly/merge-p %1 %2)
                                %1)
-                            (:layer this) (:layer other)))))
+                            (:layer this) (:layer other))))
+  ly/Compilable
+  (compile [net _]
+    (if (every? #(satisfies? ly/Compilable %) (:layer net))
+      (let [args (ly/sym-args (:out (first (:layer net))))]
+        `(fn [~args]
+           ~(reduce (fn [vs l]
+                      (ly/compile l vs))
+                    args
+                    (:layer net)))))
+    ))
 
 
 (defn network [& layers]
@@ -55,7 +66,8 @@
 
 (defn feedforward
   [net in-vol]
-  (ly/output (ly/forward net in-vol)))
+  (p ::feedforward
+   (ly/output (ly/forward net in-vol))))
 
 
 

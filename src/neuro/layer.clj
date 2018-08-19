@@ -14,6 +14,9 @@
   (update-p [this f] "update params")
   (merge-p [this other] "merge 2 layer"))
 
+(defprotocol Compilable
+  "Compile neural net to clojure code"
+  (compile [this vals] "output source code"))
 
 
 ;; input layer
@@ -23,7 +26,10 @@
   (forward [this in-vol] (assoc this :out-vol in-vol))
   (backward [this grad-vol] this)
   (output [this] (:out-vol this))
-  (grad [this] nil))
+  (grad [this] nil)
+  Compilable
+  (compile [this vals]
+    vals))
 
 (defn input [in]
   (->Input in nil))
@@ -31,6 +37,15 @@
 
 
 ;; connection layer
+
+(defn sym-args [len]
+  (mapv #(gensym (str "x" %)) (range len)))
+
+(defn compile-fc-one [this args out-node]
+  (let [mult (map (fn [i] `(* ~(nth args i) ~(vl/wget (:w this) i out-node)))
+                  (range (:in this)))]
+    `(+ ~@mult ~(vl/wget (:bias this) 0 out-node))))
+
 (defrecord FullConn [in out w bias in-vol out-vol dw dbias delta-vol]
   Executable
   (forward [this in-vol]
@@ -57,7 +72,13 @@
           {dw2 :dw, dbias2 :dbias} other]
       (assoc this
              :dw (vl/w+ dw1 dw2)
-             :dbias (vl/w+ dbias1 dbias2)))))
+             :dbias (vl/w+ dbias1 dbias2))))
+  Compilable
+  (compile [this vals]
+    (let [args (sym-args (:in this))]
+      `(let [~args ~vals]
+         ~(mapv #(compile-fc-one this args %)
+                (range (:out this)))))))
 
 (defn fc
   [in out]
@@ -75,7 +96,7 @@
 
 ;; activation layer
 
-(defn- sigmoid-f [x] (/ 1.0 (+ 1.0 (Math/exp (- x)))))
+(defn sigmoid-f [x] (/ 1.0 (+ 1.0 (Math/exp (- x)))))
 (defn- sigmoid-df [y] (* y (- 1 y)))
 
 (defrecord Sigmoid [out out-vol delta-vol]
@@ -86,7 +107,12 @@
     (let [y (:out-vol this)]
       (assoc this :delta-vol (vl/w* (vl/map-w sigmoid-df y) grad-vol))))
   (output [this] (:out-vol this))
-  (grad [this] (:delta-vol this)))
+  (grad [this] (:delta-vol this))
+  Compilable
+  (compile [this vals]
+    (let [args (sym-args (:out this))]
+      `(let [~args ~vals]
+         ~(mapv (fn [v] `(sigmoid-f ~v)) args)))))
 
 (defn sigmoid
   [in]
@@ -94,7 +120,7 @@
 
 
 
-(defn- relu-f [x] (max x 0))
+(defn relu-f [x] (max x 0))
 (defn- relu-df [x] (if (< 0 x) 1 0))
 
 (defrecord ReLU [out out-vol delta-vol]
@@ -114,7 +140,7 @@
 
 
 
-(defn- tanh-f [x] (Math/tanh x))
+(defn tanh-f [x] (Math/tanh x))
 (defn- tanh-df [y] (- 1 (* y y)))
 
 (defrecord Tanh [out out-vol delta-vol]
@@ -169,7 +195,15 @@
   (update-p [this f] this)
   (merge-p [this other]
     (assoc this
-           :loss (+ (:loss this) (:loss other)))))
+           :loss (+ (:loss this) (:loss other))))
+  Compilable
+  (compile [this vals]
+    (let [args (sym-args (:out this))]
+      `(let [~args ~vals
+             mn# (apply max ~args)
+             es# (map #(Math/exp (- % mn#)) ~args)
+             sm# (apply + es#)]
+         (mapv #(/ % sm#) es#)))))
 
 (defn softmax
   [in]
