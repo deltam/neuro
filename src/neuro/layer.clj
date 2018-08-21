@@ -1,14 +1,15 @@
 (ns neuro.layer
+  "Neural Network Layer"
   (:require [neuro.vol :as vl]))
 
-(defprotocol Layer
+(defprotocol Executable
   "Neural Network Layer"
   (forward [this in-vol] "feedfoward")
   (backward [this grad-vol] "use backprop")
   (output [this] "output by feedforward")
   (grad [this] "grad by backward"))
 
-(defprotocol Params
+(defprotocol Optimizable
   "Neural Network Layer that has parameters to be aggregated"
   (update-p [this f] "update params")
   (merge-p [this other] "merge 2 layer"))
@@ -18,7 +19,7 @@
 ;; input layer
 
 (defrecord Input [out out-vol]
-  Layer
+  Executable
   (forward [this in-vol] (assoc this :out-vol in-vol))
   (backward [this grad-vol] this)
   (output [this] (:out-vol this))
@@ -31,7 +32,7 @@
 
 ;; connection layer
 (defrecord FullConn [in out w bias in-vol out-vol dw dbias delta-vol]
-  Layer
+  Executable
   (forward [this in-vol]
     (let [{w :w, bias :bias} this]
       (assoc this
@@ -44,7 +45,7 @@
            :delta-vol (vl/dot-Tv-v (:w this) grad-vol)))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
-  Params
+  Optimizable
   (update-p [this f]
     (let [{w :w, dw :dw} this
           {b :bias, db :dbias} this]
@@ -78,7 +79,7 @@
 (defn- sigmoid-df [y] (* y (- 1 y)))
 
 (defrecord Sigmoid [out out-vol delta-vol]
-  Layer
+  Executable
   (forward [this in-vol]
     (assoc this :out-vol (vl/map-w sigmoid-f in-vol)))
   (backward [this grad-vol]
@@ -97,7 +98,7 @@
 (defn- relu-df [x] (if (< 0 x) 1 0))
 
 (defrecord ReLU [out out-vol delta-vol]
-  Layer
+  Executable
   (forward [this in-vol]
     (assoc this
            :out-vol (vl/map-w relu-f in-vol)))
@@ -117,7 +118,7 @@
 (defn- tanh-df [y] (- 1 (* y y)))
 
 (defrecord Tanh [out out-vol delta-vol]
-  Layer
+  Executable
   (forward [this in-vol]
     (assoc this :out-vol (vl/map-w tanh-f in-vol)))
   (backward [this grad-vol]
@@ -151,7 +152,7 @@
                                 (clip out-vol)))))
 
 (defrecord Softmax [out out-vol delta-vol loss]
-  Layer
+  Executable
   (forward [this in-vol]
     (let [wm (vl/w-max in-vol)
           es (vl/map-w #(Math/exp (- % wm)) in-vol)
@@ -164,7 +165,7 @@
            :loss (cross-entropy answer-vol (:out-vol this))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
-  Params
+  Optimizable
   (update-p [this f] this)
   (merge-p [this other]
     (assoc this

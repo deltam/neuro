@@ -5,7 +5,7 @@
 (declare map-with-args)
 
 (defrecord Network [layer]
-  ly/Layer
+  ly/Executable
   (forward [this in-vol]
     (assoc this :layer (map-with-args ly/forward (:layer this) in-vol ly/output)))
   (backward [this answer-vol]
@@ -16,14 +16,14 @@
     (let [out-layer (last (:layer this))]
       (ly/output out-layer)))
   (grad [this] (map ly/grad (:layer this)))
-  ly/Params
+  ly/Optimizable
   (update-p [this f]
-    (assoc this :layer (map #(if (satisfies? ly/Params %)
+    (assoc this :layer (map #(if (satisfies? ly/Optimizable %)
                                (ly/update-p % f)
                                %)
                             (:layer this))))
   (merge-p [this other]
-    (assoc this :layer (map #(if (satisfies? ly/Params %1)
+    (assoc this :layer (map #(if (satisfies? ly/Optimizable %1)
                                (ly/merge-p %1 %2)
                                %1)
                             (:layer this) (:layer other)))))

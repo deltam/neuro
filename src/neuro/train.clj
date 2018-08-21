@@ -1,5 +1,5 @@
 (ns neuro.train
-;  (:require [taoensso.tufte :as tufte :refer [p]])
+;  (:require [taoensso.tufte :refer [p]])
   (:require [neuro.layer :as ly]
             [neuro.network :as nw]))
 
