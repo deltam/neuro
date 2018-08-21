@@ -9,7 +9,6 @@
             [lein-gorilla "0.4.0"]]
   :source-paths ["src" "../../src"]
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/data.generators "0.1.2"]
                  [funcool/octet "1.1.1"]
                  [com.taoensso/nippy "2.14.0"]
                  [gorilla-plot "0.1.4"]]
