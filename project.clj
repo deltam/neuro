@@ -1,5 +1,5 @@
-(defproject neuro "0.1.0-SNAPSHOT"
-  :description "Deep Neural Network written in Clojure"
+(defproject deltam/neuro "0.1.0-SNAPSHOT"
+  :description "Deep Neural Network written in Clojure from scratch"
   :url "https://github.com/deltam/neuro"
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"
