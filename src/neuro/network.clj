@@ -29,15 +29,14 @@
                                %1)
                             (:layer this) (:layer other))))
   ly/Compilable
-  (compile [net _]
-    (if (every? #(satisfies? ly/Compilable %) (:layer net))
-      (let [args (ly/sym-args (:out (first (:layer net))))]
-        `(fn [~args]
-           ~(reduce (fn [vs l]
-                      (ly/compile l vs))
-                    args
-                    (:layer net)))))
-    ))
+  (compile [this]
+    (if (every? #(satisfies? ly/Compilable %) (:layer this))
+      (let [arg (gensym "arg")]
+        `(let [fs# ~(mapv ly/compile (:layer this))]
+           (fn [~arg]
+             (reduce (fn [inv# f#] (f# inv#))
+                     ~arg
+                     fs#)))))))
 
 
 (defn network [& layers]

@@ -16,7 +16,7 @@
 
 (defprotocol Compilable
   "Compile neural net to clojure code"
-  (compile [this vals] "output source code"))
+  (compile [this] "output source code"))
 
 
 ;; input layer
@@ -28,8 +28,8 @@
   (output [this] (:out-vol this))
   (grad [this] nil)
   Compilable
-  (compile [this vals]
-    vals))
+  (compile [this]
+    `(fn [vs#] vs#)))
 
 (defn input [in]
   (->Input in nil))
@@ -40,11 +40,6 @@
 
 (defn sym-args [len]
   (mapv #(gensym (str "x" %)) (range len)))
-
-(defn compile-fc-one [this args out-node]
-  (let [mult (map (fn [i] `(* ~(nth args i) ~(vl/wget (:w this) i out-node)))
-                  (range (:in this)))]
-    `(+ ~@mult ~(vl/wget (:bias this) 0 out-node))))
 
 (defrecord FullConn [in out w bias in-vol out-vol dw dbias delta-vol]
   Executable
@@ -74,11 +69,21 @@
              :dw (vl/w+ dw1 dw2)
              :dbias (vl/w+ dbias1 dbias2))))
   Compilable
-  (compile [this vals]
-    (let [args (sym-args (:in this))]
-      `(let [~args ~vals]
-         ~(mapv #(compile-fc-one this args %)
-                (range (:out this)))))))
+  (compile [this]
+    (let [arg (gensym "arg")
+          wsym (map #(gensym (str "w" %)) (range (:out this)))
+          in-v (gensym "in-v")]
+      `(let [~@(mapcat (fn [sym out-idx]
+                         `(~sym ~(conj (mapv #(vl/wget (:w this) % out-idx)
+                                             (range (:in this)))
+                                       (vl/wget (:bias this) 0 out-idx))))
+                    wsym
+                    (range (:out this)))]
+         (fn [~arg]
+           (let [~in-v (conj ~arg 1.0)]
+             ~(mapv (fn [out-idx]
+                      `(apply + (map * ~in-v ~(nth wsym out-idx))))
+                    (range (:out this)))))))))
 
 (defn fc
   [in out]
@@ -96,7 +101,7 @@
 
 ;; activation layer
 
-(defn sigmoid-f [x] (/ 1.0 (+ 1.0 (Math/exp (- x)))))
+(defn- sigmoid-f [x] (/ 1.0 (+ 1.0 (Math/exp (- x)))))
 (defn- sigmoid-df [y] (* y (- 1 y)))
 
 (defrecord Sigmoid [out out-vol delta-vol]
@@ -109,10 +114,11 @@
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Compilable
-  (compile [this vals]
-    (let [args (sym-args (:out this))]
-      `(let [~args ~vals]
-         ~(mapv (fn [v] `(sigmoid-f ~v)) args)))))
+  (compile [this]
+    (let [arg (gensym "arg")]
+      `(let [sig# (fn [x#] (/ 1.0 (+ 1.0 (Math/exp (- x#)))))]
+         (fn [~arg]
+           (mapv sig# ~arg))))))
 
 (defn sigmoid
   [in]
@@ -197,13 +203,13 @@
     (assoc this
            :loss (+ (:loss this) (:loss other))))
   Compilable
-  (compile [this vals]
-    (let [args (sym-args (:out this))]
-      `(let [~args ~vals
-             mn# (apply max ~args)
-             es# (map #(Math/exp (- % mn#)) ~args)
-             sm# (apply + es#)]
-         (mapv #(/ % sm#) es#)))))
+  (compile [this]
+    (let [arg (gensym "arg")]
+      `(fn [~arg]
+         (let [mn# (apply max ~arg)
+               es# (map #(Math/exp (- % mn#)) ~arg)
+               sm# (apply + es#)]
+           (mapv #(/ % sm#) es#))))))
 
 (defn softmax
   [in]
