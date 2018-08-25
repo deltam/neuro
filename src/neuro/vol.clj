@@ -20,7 +20,7 @@
 (defn he-vec
   "Random numbers for He initilization"
   [len num-nodes]
-  (gauss-vec len (/ 2.0 (Math/sqrt num-nodes))))
+  (gauss-vec len (Math/sqrt (/ 2.0 num-nodes))))
 
 (defn- xy->i
   "2次元から1次元への座標変換"
