@@ -27,16 +27,7 @@
     (assoc this :layer (map #(if (satisfies? ly/Optimizable %1)
                                (ly/merge-p %1 %2)
                                %1)
-                            (:layer this) (:layer other))))
-  ly/Compilable
-  (compile [this]
-    (if (every? #(satisfies? ly/Compilable %) (:layer this))
-      (let [arg (gensym "arg")]
-        `(let [fs# ~(mapv ly/compile (:layer this))]
-           (fn [~arg]
-             (reduce (fn [inv# f#] (f# inv#))
-                     ~arg
-                     fs#)))))))
+                            (:layer this) (:layer other)))))
 
 
 (defn network [& layers]
@@ -68,6 +59,15 @@
   (p ::feedforward
    (ly/output (ly/forward net in-vol))))
 
+(defn desc [net]
+  "describe neural net"
+  (doseq [l (:layer net)]
+    (let [t (type l)
+          in (:in l)
+          out (:out l)]
+      (if in
+        (println t "\t" in "\t" out)
+        (println t "\t    \t" out)))))
 
 
 ;; util
