@@ -31,7 +31,7 @@ open monitoring page
 
 [http://127.0.0.1:8888/worksheet.html?filename=mnist-train-monitor.gorilla](http://127.0.0.1:8888/worksheet.html?filename=mnist-train-monitor.gorilla)
 
-![mnist monitor](https://raw.githubusercontent.com/deltam/neuro/mnist-example/examples/mnist/mnist_monitor.png)
+![mnist monitor](https://github.com/deltam/neuro/blob/master/examples/mnist/mnist_monitor.png?raw=true)
 
 ## License
 

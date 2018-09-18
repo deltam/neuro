@@ -1,6 +1,8 @@
 # neuro
 
-ニューラルネットワークで遊ぶ
+Deep Neural Network written in Clojure from scratch
+
+[![Clojars Project](https://img.shields.io/clojars/v/deltam/neuro.svg)](https://clojars.org/deltam/neuro)
 
 ## やったこと
 
