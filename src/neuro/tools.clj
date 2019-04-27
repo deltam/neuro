@@ -1,7 +1,8 @@
 (ns neuro.tools
   (:require [neuro.vol :as vl]
             [neuro.layer :as ly]
-            [neuro.network :as nw]))
+            [neuro.network :as nw]
+            [neuro.train :as tr]))
 
 
 ;;; gradient checking (for debug)
@@ -52,7 +53,7 @@
   (gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 7 1 0)
   ;> {:result true, :dw 0.061648897173240895, :grad 0.06164889717413802}"
   [net in-vol train-vol l i o]
-  (let [net-bp (backprop net in-vol train-vol (fn [w dw] (- w (* 0.01 dw))))
+  (let [net-bp (tr/backprop net in-vol train-vol (fn [w dw] (- w (* 0.01 dw))))
         dw (get-dw net-bp l i o)
         eps 0.0001
         net1 (add-w-eps net l i o eps)
