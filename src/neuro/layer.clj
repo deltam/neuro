@@ -37,11 +37,11 @@
     (let [{w :w, bias :bias} this]
       (assoc this
              :in-vol in-vol
-             :out-vol (vl/w+ (vl/dot w in-vol) bias))))
+             :out-vol (vl/w+ (vl/dot w in-vol) (vl/repeat-vol bias (:sx in-vol))))))
   (backward [this grad-vol]
     (assoc this
-           :dw (vl/dot-v-Tv grad-vol (:in-vol this))
-           :dbias grad-vol
+           :dw (vl/dot grad-vol (vl/T (:in-vol this)))
+           :dbias (vl/sum-vol grad-vol)
            :delta-vol (vl/dot-Tv-v (:w this) grad-vol)))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
@@ -137,6 +137,15 @@
 
 ;; loss layer
 
+(defn softmax-f [in-vol]
+  (let [wm (vl/w-max in-vol)
+        es (vl/map-w #(Math/exp (- % wm)) in-vol)
+        sum (vl/reduce-elm + es)]
+    (vl/map-w #(/ % sum) es)))
+
+(defn softmax-f-n [in-vol]
+  (vl/map-row softmax-f in-vol))
+
 (defn- clip
   "1e-10 - 1.0 の間に重みを正規化"
   [v]
@@ -144,25 +153,28 @@
         wmin (apply min (:w v))]
     (vl/map-w #(/ (+ (- % wmin) 1e-10) wmax) v)))
 
-(defn- cross-entropy
+(defn cross-entropy
   "cross-entropy 誤差関数"
   [answer-vol out-vol]
   (- (vl/reduce-elm + (vl/map-w (fn [d y] (* d (Math/log y)))
                                 answer-vol
                                 (clip out-vol)))))
 
+(defn cross-entropy-n
+  [answer-vol out-vol]
+  (/
+   (apply + (map cross-entropy (vl/rows answer-vol) (vl/rows out-vol)))
+   (:sx answer-vol)))
+
 (defrecord Softmax [out out-vol delta-vol loss]
   Executable
   (forward [this in-vol]
-    (let [wm (vl/w-max in-vol)
-          es (vl/map-w #(Math/exp (- % wm)) in-vol)
-          sum (vl/reduce-elm + es)]
-      (assoc this
-             :out-vol (vl/map-w #(/ % sum) es))))
+    (assoc this
+           :out-vol (softmax-f-n in-vol)))
   (backward [this answer-vol]
     (assoc this
            :delta-vol (vl/w- (:out-vol this) answer-vol)
-           :loss (cross-entropy answer-vol (:out-vol this))))
+           :loss (cross-entropy-n answer-vol (:out-vol this))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable

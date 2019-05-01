@@ -1,7 +1,8 @@
 (ns neuro.train
 ;  (:require [taoensso.tufte :refer [p]])
   (:require [neuro.layer :as ly]
-            [neuro.network :as nw]))
+            [neuro.network :as nw]
+            [neuro.vol :as vl]))
 
 
 (def ^:dynamic *train-params*
@@ -75,14 +76,15 @@
 ;;; train funcs
 
 (defn update-mini-batch
-  [net batch]
-  (ly/update-p (backprop-n net batch)
-               (gen-w-updater (count batch))))
+  [net vols]
+  (let [in-vol (apply vl/stack-rows (map first vols))
+        answer-vol (apply vl/stack-rows (map second vols))]
+    (ly/update-p (backprop net in-vol answer-vol)
+                 (gen-w-updater (count vols)))))
 
 (defn reduce-mini-batchs
   [init-net batchs]
   (reduce (fn [net b]
-            (add-train-loss! (nw/loss net))
             (update-mini-batch net b))
           init-net
           batchs))
@@ -95,6 +97,7 @@
     (loop [epoch 0, cur net]
       (swap! *train-status* assoc :now-epoch epoch)
       (swap! *train-status* assoc :now-net cur)
+      (add-train-loss! (nw/loss cur))
       (future ((:epoch-reporter *train-params*) epoch cur))
       (if (< epoch (:epoch-limit *train-params*))
         (recur (inc epoch) (reduce-mini-batchs cur batchs))

@@ -116,10 +116,31 @@
                   [x y])]
          (mapv (fn [[x y]] (wget v x y)) xy))))
 
-(defn w-sum-row
+(defn repeat-vol
+  [v n]
+  (dot v (vol n 1 (fill-vec n 1))))
+
+(defn sum-vol
   "行を足し合わせて1xNの行列にする"
   [v]
   (dot v (vol 1 (:sx v) (fill-vec (:sx v) 1))))
+
+(def w-sum-row sum-vol)
+
+(defn row [v row]
+  (vol 1 (:sy v) (mapv #(wget v row %) (range (:sy v)))))
+
+(defn rows [v]
+  (map #(row v %) (range (:sx v))))
+
+(defn append-row [v row]
+  (T
+   (vol (:sy v)
+        (inc (:sx v))
+        (vec (concat (:w (T v)) (:w row))))))
+
+(defn stack-rows [& rows]
+  (reduce append-row (first rows) (rest rows)))
 
 (defn w-max
   [v]
@@ -139,3 +160,13 @@
   ([f v1 v2]
    (vol (:sx v1) (:sy v1)
         (mapv f (:w v1) (:w v2)))))
+
+(defn map-row
+  ([f v]
+   (let [done (map f (rows v))]
+     (vol (:sx v) (:sy v)
+          (vec (for [y (range (:sy v)), x (range (:sx v))]
+                 (wget (nth done x) 0 y))))))
+  ([f v1 v2]
+   (let [done (map f (rows v1) (rows v2))]
+     (reduce append-row (first done) (rest done)))))
