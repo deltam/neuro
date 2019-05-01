@@ -11,8 +11,7 @@
 
 (defprotocol Optimizable
   "Neural Network Layer that has parameters to be aggregated"
-  (update-p [this f] "update params")
-  (merge-p [this other] "merge 2 layer"))
+  (update-p [this f] "update params"))
 
 
 
@@ -51,13 +50,7 @@
           {b :bias, db :dbias} this]
       (assoc this
              :w (vl/map-w f w dw)
-             :bias (vl/map-w f b db))))
-  (merge-p [this other]
-    (let [{dw1 :dw, dbias1 :dbias} this
-          {dw2 :dw, dbias2 :dbias} other]
-      (assoc this
-             :dw (vl/w+ dw1 dw2)
-             :dbias (vl/w+ dbias1 dbias2)))))
+             :bias (vl/map-w f b db)))))
 
 (defn fc
   [in out]
@@ -178,10 +171,7 @@
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable
-  (update-p [this f] this)
-  (merge-p [this other]
-    (assoc this
-           :loss (+ (:loss this) (:loss other)))))
+  (update-p [this f] this))
 
 (defn softmax
   [in]

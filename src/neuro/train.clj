@@ -62,16 +62,6 @@
   (let [net-f (ly/forward net in-vol)]
     (ly/backward net-f answer-vol)))
 
-(defn backprop-n
-  "do backpropagation of multiple train-pairs"
-  [net train-pairs]
-  (let [merged (reduce ly/merge-p
-                       (pmap (fn [[in-vol answer-vol]]
-                              (backprop net in-vol answer-vol))
-                            train-pairs))
-        loss (/ (nw/loss merged) (count train-pairs))]
-    (nw/update-loss merged loss)))
-
 
 ;;; train funcs
 

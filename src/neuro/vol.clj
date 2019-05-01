@@ -125,8 +125,6 @@
   [v]
   (dot v (vol 1 (:sx v) (fill-vec (:sx v) 1))))
 
-(def w-sum-row sum-vol)
-
 (defn row [v row]
   (vol 1 (:sy v) (mapv #(wget v row %) (range (:sy v)))))
 

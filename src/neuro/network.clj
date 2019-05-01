@@ -21,12 +21,7 @@
     (assoc this :layer (map #(if (satisfies? ly/Optimizable %)
                                (ly/update-p % f)
                                %)
-                            (:layer this))))
-  (merge-p [this other]
-    (assoc this :layer (map #(if (satisfies? ly/Optimizable %1)
-                               (ly/merge-p %1 %2)
-                               %1)
-                            (:layer this) (:layer other)))))
+                            (:layer this)))))
 
 
 (defn network [& layers]
