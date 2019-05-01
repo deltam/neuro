@@ -168,3 +168,9 @@
   ([f v1 v2]
    (let [done (map f (rows v1) (rows v2))]
      (reduce append-row (first done) (rest done)))))
+
+(defn argmax [v]
+  (let [m (apply max (:w v))]
+    (reduce-kv (fn [acc i w] (if (= w m) i acc))
+               0
+               (:w v))))

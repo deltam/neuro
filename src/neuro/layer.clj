@@ -146,18 +146,19 @@
         wmin (apply min (:w v))]
     (vl/map-w #(/ (+ (- % wmin) 1e-10) wmax) v)))
 
+
 (defn cross-entropy
   "cross-entropy 誤差関数"
   [answer-vol out-vol]
-  (- (vl/reduce-elm + (vl/map-w (fn [d y] (* d (Math/log y)))
-                                answer-vol
-                                (clip out-vol)))))
+  (let [i (vl/argmax answer-vol)
+        v (nth (:w (clip out-vol)) i)]
+    (- (Math/log v))))
 
 (defn cross-entropy-n
   [answer-vol out-vol]
-  (/
-   (apply + (map cross-entropy (vl/rows answer-vol) (vl/rows out-vol)))
-   (:sx answer-vol)))
+  (let [loss-vec (map cross-entropy (vl/rows answer-vol) (vl/rows out-vol))]
+    (/ (apply + loss-vec)
+       (count loss-vec))))
 
 (defrecord Softmax [out out-vol delta-vol loss]
   Executable
