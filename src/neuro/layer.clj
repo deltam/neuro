@@ -42,7 +42,7 @@
     (assoc this
            :dw (vl/dot grad-vol (vl/T (:in-vol this)))
            :dbias (vl/sum-vol grad-vol)
-           :delta-vol (vl/dot-Tv-v (:w this) grad-vol)))
+           :delta-vol (vl/dot (vl/T (:w this)) grad-vol)))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable
