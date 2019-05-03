@@ -1,5 +1,7 @@
 (ns neuro.vol
-  "Matrix for Neural Network")
+  "Matrix for Neural Network"
+;  (:require [taoensso.tufte :refer [p]])
+  )
 
 
 ;; util
@@ -39,6 +41,9 @@
   ([wv] ; 1 dim
    (vol 1 (count wv) wv)))
 
+(defn shape [v]
+  [(:sx v) (:sy v)])
+
 (defn wget [this x y] (nth (:w this) (xy->i this x y)))
 
 (defn wset [this x y w]
@@ -65,17 +70,19 @@
 (defn dot
   "w行列の掛け算"
   [v1 v2]
-  (vol (:sx v2) (:sy v1)
-       (let [v1-y-range (range (:sy v1))
-             v1-rows (mapv (fn [y] (map #(wget v1 % y) (range (:sx v1))))
-                           v1-y-range)
-             v2-x-range (range (:sx v2))
-             v2-cols (mapv (fn [x] (map #(wget v2 x %) (range (:sy v2))))
-                           v2-x-range)
-             xy (for [y (range (:sy v1)), x (range (:sx v2))]
-                  [x y])]
-         (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
-               xy))))
+  (let [[sx1 sy1] (shape v1)
+        [sx2 sy2] (shape v2)]
+    (vol sx2 sy1
+         (let [v1-y-range (range sy1)
+               v1-rows (mapv (fn [y] (map #(wget v1 % y) (range sx1)))
+                             v1-y-range)
+               v2-x-range (range sx2)
+               v2-cols (mapv (fn [x] (map #(wget v2 x %) (range sy2)))
+                             v2-x-range)
+               xy (for [y (range sy1), x (range sx2)]
+                    [x y])]
+           (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
+                 xy)))))
 
 (defn dot-Tv-v
   "(dot (T v1) v2)"

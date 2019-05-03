@@ -20,9 +20,9 @@
 (defrecord Input [out out-vol]
   Executable
   (forward [this in-vol] (assoc this :out-vol in-vol))
-  (backward [this grad-vol] this)
+  (backward [this grad-vol] (assoc this :grad grad-vol))
   (output [this] (:out-vol this))
-  (grad [this] nil))
+  (grad [this] (:grad this)))
 
 (defn input [in]
   (->Input in nil))
@@ -33,10 +33,11 @@
 (defrecord FullConn [in out w bias in-vol out-vol dw dbias delta-vol]
   Executable
   (forward [this in-vol]
-    (let [{w :w, bias :bias} this]
+    (let [{w :w, bias :bias} this
+          [len _] (vl/shape in-vol)]
       (assoc this
              :in-vol in-vol
-             :out-vol (vl/w+ (vl/dot w in-vol) (vl/repeat-vol bias (:sx in-vol))))))
+             :out-vol (vl/w+ (vl/dot w in-vol) (vl/repeat-vol bias len)))))
   (backward [this grad-vol]
     (assoc this
            :dw (vl/dot grad-vol (vl/T (:in-vol this)))
@@ -147,14 +148,17 @@
     (vl/map-w #(/ (+ (- % wmin) 1e-10) wmax) v)))
 
 
-(defn cross-entropy
+(defn- cross-entropy
   "cross-entropy 誤差関数"
   [answer-vol out-vol]
   (let [i (vl/argmax answer-vol)
-        v (nth (:w (clip out-vol)) i)]
-    (- (Math/log v))))
+        v (vl/wget out-vol 0 i)
+;        v (vl/wget (clip out-vol) 0 i)
+        ]
+    (- (Math/log (+ 1e-7 v)))
+    ))
 
-(defn cross-entropy-n
+(defn- cross-entropy-n
   [answer-vol out-vol]
   (let [loss-vec (map cross-entropy (vl/rows answer-vol) (vl/rows out-vol))]
     (/ (apply + loss-vec)

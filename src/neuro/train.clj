@@ -68,16 +68,21 @@
 (defn update-mini-batch
   [net vols]
   (let [in-vol (apply vl/stack-rows (map first vols))
-        answer-vol (apply vl/stack-rows (map second vols))]
-    (ly/update-p (backprop net in-vol answer-vol)
-                 (gen-w-updater (count vols)))))
+        answer-vol (apply vl/stack-rows (map second vols))
+        backed (backprop net in-vol answer-vol)]
+    [(ly/update-p backed (gen-w-updater (count vols)))
+     (nw/loss backed)]))
 
 (defn reduce-mini-batchs
   [init-net batchs]
-  (reduce (fn [net b]
-            (update-mini-batch net b))
-          init-net
-          batchs))
+  (let [[new-net all-loss]
+        (reduce (fn [[net all-loss] b]
+                  (let [[next loss] (update-mini-batch net b)]
+                    [next (+ all-loss loss)]))
+                [init-net 0.0]
+                batchs)]
+    (add-train-loss! (/ all-loss (count batchs)))
+    new-net))
 
 (defn sgd
   "Stochastic gradient descent"
@@ -87,7 +92,6 @@
     (loop [epoch 0, cur net]
       (swap! *train-status* assoc :now-epoch epoch)
       (swap! *train-status* assoc :now-net cur)
-      (add-train-loss! (nw/loss cur))
       (future ((:epoch-reporter *train-params*) epoch cur))
       (if (< epoch (:epoch-limit *train-params*))
         (recur (inc epoch) (reduce-mini-batchs cur batchs))

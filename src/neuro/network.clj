@@ -2,16 +2,21 @@
   (:require [neuro.layer :as ly]))
 
 
-(declare map-with-args)
+(defn- reduce-layers [layers f init out-fn]
+  (first
+   (reduce (fn [[acc out] cur]
+             (let [next (f cur out)]
+               [(conj acc next) (out-fn next)]))
+           [[] init]
+           layers)))
 
 (defrecord Network [layer]
   ly/Executable
   (forward [this in-vol]
-    (assoc this :layer (map-with-args ly/forward (:layer this) in-vol ly/output)))
+    (assoc this :layer (reduce-layers (:layer this) ly/forward in-vol ly/output)))
   (backward [this answer-vol]
-    (let [back-layer (reverse (:layer this))]
-      (assoc this :layer (reverse
-                          (map-with-args ly/backward back-layer answer-vol ly/grad)))))
+    (assoc this :layer (reverse
+                        (reduce-layers (reverse (:layer this)) ly/backward answer-vol ly/grad))))
   (output [this]
     (let [out-layer (last (:layer this))]
       (ly/output out-layer)))
@@ -75,12 +80,3 @@
                  %
                  (assoc % :loss loss))
               (:layer net))))
-
-(defn- map-with-args
-  "ひとつ前の関数適用の結果より引数を抜き出して受け渡しながらmapする"
-  [f coll init-val arg-f]
-  (loop [cur (first coll), r (rest coll), done [], v init-val]
-    (if (nil? cur)
-      done
-      (let [next (f cur v)]
-        (recur (first r) (rest r) (conj done next) (arg-f next))))))
