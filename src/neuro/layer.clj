@@ -152,11 +152,10 @@
   "cross-entropy 誤差関数"
   [answer-vol out-vol]
   (let [i (vl/argmax answer-vol)
-        v (vl/wget out-vol 0 i)
+        v (+ (vl/wget out-vol 0 i) 1e-7)
 ;        v (vl/wget (clip out-vol) 0 i)
         ]
-    (- (Math/log (+ 1e-7 v)))
-    ))
+    (- (Math/log v))))
 
 (defn- cross-entropy-n
   [answer-vol out-vol]
@@ -171,7 +170,9 @@
            :out-vol (softmax-f-n in-vol)))
   (backward [this answer-vol]
     (assoc this
-           :delta-vol (vl/w- (:out-vol this) answer-vol)
+           :delta-vol (let [[batch-size _] (vl/shape answer-vol)]
+                        (vl/map-w #(/ % batch-size)
+                                  (vl/w- (:out-vol this) answer-vol)))
            :loss (cross-entropy-n answer-vol (:out-vol this))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))

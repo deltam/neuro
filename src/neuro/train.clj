@@ -45,12 +45,12 @@
 
 (defn gen-w-updater
   "generate updater for weights and biases"
-  [mini-batch-size]
+  []
   (if-let [f (:updater *train-params*)]
     f
-    (let [rate (/ (:learning-rate *train-params*) mini-batch-size)]
+    (let [lr (:learning-rate *train-params*)]
       (fn [w dw]
-        (- w (* rate dw))))))
+        (- w (* lr dw))))))
 
 
 
@@ -70,7 +70,7 @@
   (let [in-vol (apply vl/stack-rows (map first vols))
         answer-vol (apply vl/stack-rows (map second vols))
         backed (backprop net in-vol answer-vol)]
-    [(ly/update-p backed (gen-w-updater (count vols)))
+    [(ly/update-p backed (gen-w-updater))
      (nw/loss backed)]))
 
 (defn reduce-mini-batchs
