@@ -4,7 +4,6 @@
             [octet.core :as buf])
   (:import java.awt.image.BufferedImage
            java.nio.ByteBuffer
-           java.nio.channels.FileChannel
            java.nio.channels.FileChannel$MapMode
            java.io.FileInputStream))
 
