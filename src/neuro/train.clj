@@ -11,7 +11,8 @@
    :mini-batch-size 10
    :epoch-limit 10
    :updater nil
-   :epoch-reporter (fn [epoch net] nil)})
+   :epoch-reporter (fn [epoch net] nil)
+   :mini-batch-reporter (fn [net loss] nil)})
 
 (defn new-status []
   "Generate train progress status"
@@ -78,6 +79,7 @@
   (let [[new-net all-loss]
         (reduce (fn [[net all-loss] b]
                   (let [[next loss] (update-mini-batch net b)]
+                    (future ((:mini-batch-reporter *train-params*) next loss))
                     [next (+ all-loss loss)]))
                 [init-net 0.0]
                 batchs)]
