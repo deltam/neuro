@@ -94,7 +94,9 @@
     (loop [epoch 0, cur net]
       (swap! *train-status* assoc :now-epoch epoch)
       (swap! *train-status* assoc :now-net cur)
-      (future ((:epoch-reporter *train-params*) epoch cur))
       (if (< epoch (:epoch-limit *train-params*))
-        (recur (inc epoch) (reduce-mini-batchs cur batchs))
+        (let [ep (inc epoch)
+              next (reduce-mini-batchs cur batchs)]
+          (future ((:epoch-reporter *train-params*) ep next))
+          (recur ep next))
         cur))))
