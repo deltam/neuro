@@ -1,7 +1,8 @@
 (ns neuro.train
 ;  (:require [taoensso.tufte :refer [p]])
   (:require [neuro.layer :as ly]
-            [neuro.network :as nw]))
+            [neuro.network :as nw]
+            [neuro.vol :as vl]))
 
 
 (def ^:dynamic *train-params*
@@ -10,7 +11,8 @@
    :mini-batch-size 10
    :epoch-limit 10
    :updater nil
-   :epoch-reporter (fn [epoch net] nil)})
+   :epoch-reporter (fn [epoch net] nil)
+   :mini-batch-reporter (fn [net loss] nil)})
 
 (defn new-status []
   "Generate train progress status"
@@ -44,12 +46,12 @@
 
 (defn gen-w-updater
   "generate updater for weights and biases"
-  [mini-batch-size]
+  []
   (if-let [f (:updater *train-params*)]
     f
-    (let [rate (/ (:learning-rate *train-params*) mini-batch-size)]
+    (let [lr (:learning-rate *train-params*)]
       (fn [w dw]
-        (- w (* rate dw))))))
+        (- w (* lr dw))))))
 
 
 
@@ -61,31 +63,28 @@
   (let [net-f (ly/forward net in-vol)]
     (ly/backward net-f answer-vol)))
 
-(defn backprop-n
-  "do backpropagation of multiple train-pairs"
-  [net train-pairs]
-  (let [merged (reduce ly/merge-p
-                       (pmap (fn [[in-vol answer-vol]]
-                              (backprop net in-vol answer-vol))
-                            train-pairs))
-        loss (/ (nw/loss merged) (count train-pairs))]
-    (nw/update-loss merged loss)))
-
 
 ;;; train funcs
 
 (defn update-mini-batch
-  [net batch]
-  (ly/update-p (backprop-n net batch)
-               (gen-w-updater (count batch))))
+  [net vols]
+  (let [in-vol (apply vl/stack-rows (map first vols))
+        answer-vol (apply vl/stack-rows (map second vols))
+        backed (backprop net in-vol answer-vol)]
+    [(ly/update-p backed (gen-w-updater))
+     (nw/loss backed)]))
 
 (defn reduce-mini-batchs
   [init-net batchs]
-  (reduce (fn [net b]
-            (add-train-loss! (nw/loss net))
-            (update-mini-batch net b))
-          init-net
-          batchs))
+  (let [[new-net all-loss]
+        (reduce (fn [[net all-loss] b]
+                  (let [[next loss] (update-mini-batch net b)]
+                    (future ((:mini-batch-reporter *train-params*) next loss))
+                    [next (+ all-loss loss)]))
+                [init-net 0.0]
+                batchs)]
+    (add-train-loss! (/ all-loss (count batchs)))
+    new-net))
 
 (defn sgd
   "Stochastic gradient descent"
@@ -95,7 +94,9 @@
     (loop [epoch 0, cur net]
       (swap! *train-status* assoc :now-epoch epoch)
       (swap! *train-status* assoc :now-net cur)
-      (future ((:epoch-reporter *train-params*) epoch cur))
       (if (< epoch (:epoch-limit *train-params*))
-        (recur (inc epoch) (reduce-mini-batchs cur batchs))
+        (let [ep (inc epoch)
+              next (reduce-mini-batchs cur batchs)]
+          (future ((:epoch-reporter *train-params*) ep next))
+          (recur ep next))
         cur))))

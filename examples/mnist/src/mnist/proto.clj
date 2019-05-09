@@ -1,11 +1,11 @@
 (ns mnist.proto
   "ためしにいちから実装してみる
   http://nnadl-ja.github.io/nnadl_site_ja/chap1.html"
-  (:require [taoensso.tufte :as tufte :refer (p)])
+;  (:require [taoensso.tufte :as tufte :refer (p)])
   (:require [neuro.vol :as vl]
             [mnist.data :as md]))
 
-(defn rand-vol [x y] (vl/vol x y (vl/rand-vec (* x y))))
+(defn rand-vol [x y] (vl/vol x y (vl/gauss-vec (* x y) 1.0)))
 (defn zero-vol [x y] (vl/vol x y (vl/zero-vec (* x y))))
 
 

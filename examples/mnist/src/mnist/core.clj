@@ -23,15 +23,21 @@
 
 (def ^:private start-time-now-epoch (atom 0))
 
+(def test-error-rates (atom []))
+
 (defn report [ep net]
   (let [ok (evaluate net test-data)
         n (count test-data)
         elapsed (- (System/currentTimeMillis) @start-time-now-epoch)]
-    (printf "epoch %d: %d / %d  (%4.2f min)\n" ep ok n (float (/ elapsed 60000.0)))
+    (printf "\nepoch %d: %d / %d  (%4.2f min)\n" ep ok n (float (/ elapsed 60000.0)))
     (flush)
+    (swap! test-error-rates conj (- 1.0 (/ (float ok) (float n))))
     (reset! start-time-now-epoch (System/currentTimeMillis))
 ;    (sh "say" (str "epoc " ep " " (float (* 100 (/ ok n))))) ; for mac user
     ))
+
+(defn mini-batch-report [net loss]
+  (print "."))
 
 
 (def mnist-train-status (atom nil))
@@ -40,12 +46,14 @@
   ([] (train net))
   ([net]
    (reset! start-time-now-epoch (System/currentTimeMillis))
+   (reset! test-error-rates [])
    (reset! mnist-train-status (nt/new-status))
    (nc/with-params [:train-status-var mnist-train-status
                     :mini-batch-size 20
                     :epoch-limit 30
                     :learning-rate 1.0
-                    :epoch-reporter report]
+                    :epoch-reporter report
+                    :mini-batch-reporter mini-batch-report]
      (nc/sgd net train-data))))
 
 

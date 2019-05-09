@@ -6,23 +6,26 @@
   (testing "create vol on default"
     (is (= #neuro.vol.VecVol{:sx 2 :sy 2
             :w [1 2
-                3 4]}
+                3 4]
+            :T false}
            (vol 2 2 [1 2
                      3 4]))))
   (testing "create vol by x,y"
-    (let [{x :sx, y :sy, w :w} (vol 2 3)]
+    (let [{x :sx, y :sy, w :w, T :T} (vol 2 3)]
       (is (= 2 x))
       (is (= 3 y))
-      (is (= (* 2 3) (count w)))))
+      (is (= (* 2 3) (count w)))
+      (is (false? T))))
   (testing "create vol by vector"
-    (let [{x :sx, y :sy, w :w} (vol [1 2 3 4])]
+    (let [{x :sx, y :sy, w :w, T :T} (vol [1 2 3 4])]
       (is (= 1 x))
       (is (= 4 y))
       (is (= [1
               2
               3
               4]
-             w)))))
+             w))
+      (is (false? T)))))
 
 (deftest wget-test
   (let [v1 (vol [1
@@ -61,26 +64,41 @@
              (wset v2 1 2 100))))))
 
 (deftest transposed-test
-  (let [v1 (vol [1
-                 2
-                 3
-                 4
-                 5])
+  (let [v1 (vol [1 2 3 4 5])
         v2 (vol 2 3 [1 2
                      3 4
                      5 6])]
     (testing "transposed for vector"
-      (let [{x :sx, y :sy, w :w} (T v1)]
+      (let [tv1 (T v1)
+            [x y] (shape tv1)
+            {T :T} tv1]
         (is (= 5 x))
         (is (= 1 y))
-        (is (= [1 2 3 4 5] w))))
+        (is (true? T))
+        (is (= [1
+                2
+                3
+                4
+                5]
+               [(wget tv1 0 0)
+                (wget tv1 1 0)
+                (wget tv1 2 0)
+                (wget tv1 3 0)
+                (wget tv1 4 0)]))
+        ))
     (testing "transposed for matrix"
-      (let [{x :sx, y :sy, w :w} (T v2)]
+      (let [tv2 (T v2)
+            [x y] (shape tv2)
+            {T :T} tv2]
         (is (= 3 x))
         (is (= 2 y))
-        (is (= [1 3 5
-                2 4 6]
-               w))))))
+        (is (= [1 2
+                3 4
+                5 6]
+               [(wget tv2 0 0) (wget tv2 0 1)
+                (wget tv2 1 0) (wget tv2 1 1)
+                (wget tv2 2 0) (wget tv2 2 1)]))
+        (is (true? T))))))
 
 (deftest w-elm-op-test
   (let [v1 (vol 2 3 [1 2
@@ -95,7 +113,8 @@
         (is (= 3 y))
         (is (= [[1  7] [2  8]
                 [3  9] [4 10]
-                [5 11] [6 12]]))))))
+                [5 11] [6 12]]
+               w))))))
 
 (deftest dot-test
   (testing "prod 2x2"

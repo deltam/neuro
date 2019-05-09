@@ -11,8 +11,7 @@
 
 (defprotocol Optimizable
   "Neural Network Layer that has parameters to be aggregated"
-  (update-p [this f] "update params")
-  (merge-p [this other] "merge 2 layer"))
+  (update-p [this f] "update params"))
 
 
 
@@ -21,9 +20,9 @@
 (defrecord Input [out out-vol]
   Executable
   (forward [this in-vol] (assoc this :out-vol in-vol))
-  (backward [this grad-vol] this)
+  (backward [this grad-vol] (assoc this :grad grad-vol))
   (output [this] (:out-vol this))
-  (grad [this] nil))
+  (grad [this] (:grad this)))
 
 (defn input [in]
   (->Input in nil))
@@ -34,15 +33,16 @@
 (defrecord FullConn [in out w bias in-vol out-vol dw dbias delta-vol]
   Executable
   (forward [this in-vol]
-    (let [{w :w, bias :bias} this]
+    (let [{w :w, bias :bias} this
+          [len _] (vl/shape in-vol)]
       (assoc this
              :in-vol in-vol
-             :out-vol (vl/w+ (vl/dot w in-vol) bias))))
+             :out-vol (vl/w+ (vl/dot w in-vol) (vl/repeat-vol bias len)))))
   (backward [this grad-vol]
     (assoc this
-           :dw (vl/dot-v-Tv grad-vol (:in-vol this))
-           :dbias grad-vol
-           :delta-vol (vl/dot-Tv-v (:w this) grad-vol)))
+           :dw (vl/dot grad-vol (vl/T (:in-vol this)))
+           :dbias (vl/sum-vol grad-vol)
+           :delta-vol (vl/dot (vl/T (:w this)) grad-vol)))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable
@@ -51,13 +51,7 @@
           {b :bias, db :dbias} this]
       (assoc this
              :w (vl/map-w f w dw)
-             :bias (vl/map-w f b db))))
-  (merge-p [this other]
-    (let [{dw1 :dw, dbias1 :dbias} this
-          {dw2 :dw, dbias2 :dbias} other]
-      (assoc this
-             :dw (vl/w+ dw1 dw2)
-             :dbias (vl/w+ dbias1 dbias2)))))
+             :bias (vl/map-w f b db)))))
 
 (defn fc
   [in out]
@@ -137,6 +131,15 @@
 
 ;; loss layer
 
+(defn softmax-f [in-vol]
+  (let [wm (vl/w-max in-vol)
+        es (vl/map-w #(Math/exp (- % wm)) in-vol)
+        sum (vl/reduce-elm + es)]
+    (vl/map-w #(/ % sum) es)))
+
+(defn softmax-f-n [in-vol]
+  (vl/map-row softmax-f in-vol))
+
 (defn- clip
   "1e-10 - 1.0 の間に重みを正規化"
   [v]
@@ -144,32 +147,37 @@
         wmin (apply min (:w v))]
     (vl/map-w #(/ (+ (- % wmin) 1e-10) wmax) v)))
 
+
 (defn- cross-entropy
   "cross-entropy 誤差関数"
   [answer-vol out-vol]
-  (- (vl/reduce-elm + (vl/map-w (fn [d y] (* d (Math/log y)))
-                                answer-vol
-                                (clip out-vol)))))
+  (let [i (vl/argmax answer-vol)
+        v (+ (vl/wget out-vol 0 i) 1e-7)
+;        v (vl/wget (clip out-vol) 0 i)
+        ]
+    (- (Math/log v))))
+
+(defn- cross-entropy-n
+  [answer-vol out-vol]
+  (let [loss-vec (map cross-entropy (vl/rows answer-vol) (vl/rows out-vol))]
+    (/ (apply + loss-vec)
+       (count loss-vec))))
 
 (defrecord Softmax [out out-vol delta-vol loss]
   Executable
   (forward [this in-vol]
-    (let [wm (vl/w-max in-vol)
-          es (vl/map-w #(Math/exp (- % wm)) in-vol)
-          sum (vl/reduce-elm + es)]
-      (assoc this
-             :out-vol (vl/map-w #(/ % sum) es))))
+    (assoc this
+           :out-vol (softmax-f-n in-vol)))
   (backward [this answer-vol]
     (assoc this
-           :delta-vol (vl/w- (:out-vol this) answer-vol)
-           :loss (cross-entropy answer-vol (:out-vol this))))
+           :delta-vol (let [[batch-size _] (vl/shape answer-vol)]
+                        (vl/map-w #(/ % batch-size)
+                                  (vl/w- (:out-vol this) answer-vol)))
+           :loss (cross-entropy-n answer-vol (:out-vol this))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable
-  (update-p [this f] this)
-  (merge-p [this other]
-    (assoc this
-           :loss (+ (:loss this) (:loss other)))))
+  (update-p [this f] this))
 
 (defn softmax
   [in]
