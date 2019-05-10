@@ -10,17 +10,13 @@
 (defn add-w-eps
   [net l i o eps]
   (let [layer (nth (:layer net) l)
-        v (:w layer)
-        we (+ (vl/wget v i o) eps)]
-    (assoc net :layer
-           (assoc (vec (:layer net)) l
-                  (assoc layer :w
-                         (vl/wset v i o we))))))
+        v (:w layer)]
+    (update-in net [:layer l :w :w]
+               update (vl/pos v i o) #(+ % eps))))
 
 (defn get-dw
   [net l i o]
-  (let [layer (nth (:layer net) l)
-        v (:dw layer)]
+  (let [v (get-in net [:layer l :dw])]
     (vl/wget v i o)))
 
 (defn calc-loss
@@ -53,7 +49,7 @@
   (gradient-checking net (vl/vol [2 3]) (vl/vol [0 1]) 7 1 0)
   ;> {:result true, :dw 0.061648897173240895, :grad 0.06164889717413802}"
   [net in-vol train-vol l i o]
-  (let [net-bp (tr/backprop net in-vol train-vol (fn [w dw] (- w (* 0.01 dw))))
+  (let [net-bp (tr/backprop net in-vol train-vol)
         dw (get-dw net-bp l i o)
         eps 0.0001
         net1 (add-w-eps net l i o eps)

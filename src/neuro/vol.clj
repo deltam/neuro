@@ -1,6 +1,6 @@
 (ns neuro.vol
   "Matrix for Neural Network"
-;  (:require [taoensso.tufte :refer [p]])
+  (:require [taoensso.tufte :refer [p]])
   )
 
 
@@ -25,21 +25,7 @@
   (gauss-vec len (Math/sqrt (/ 2.0 num-nodes))))
 
 
-(defrecord VecVol [sx sy w T])
-
-(defn vol
-  "as matrix, col -> :sy, row -> :sx"
-  ([ix iy wv]
-   (->VecVol ix iy wv false))
-  ([ix iy]
-   (vol ix iy (xavier-vec (* ix iy) ix)))
-  ([wv] ; 1 dim
-   (vol 1 (count wv) wv)))
-
-(defn shape [v]
-  (if (:T v)
-    [(:sy v) (:sx v)]
-    [(:sx v) (:sy v)]))
+(defrecord VecVol [shape posf w])
 
 (defn- xy->i
   "2次元から1次元への座標変換"
@@ -48,22 +34,95 @@
     (+ y (* x (:sx v)))
     (+ x (* y (:sx v)))))
 
+(defn gen-posf
+  [[sx sy] f]
+  (fn [x y]
+    (if (and (<= 0 x) (< x sx) (<= 0 y) (< y sy))
+      (f x y)
+      (throw (IndexOutOfBoundsException. (str "Index=" [x y] ": shape=" [sx sy]))))))
+
+(defn vol
+  "as matrix, col -> :sy, row -> :sx"
+  ([ix iy wv]
+   (->VecVol [ix iy]
+             (gen-posf [ix iy] (fn [x y] (+ x (* y ix))))
+             (vec wv)))
+  ([ix iy]
+   (vol ix iy (xavier-vec (* ix iy) ix)))
+  ([wv] ; 1 dim
+   (vol 1 (count wv) wv)))
+
+(def raw :w)
+
+(def shape :shape)
+
+(defn pos [v x y]
+  ((:posf v) x y))
+
 (defn wget [this x y]
-  (nth (:w this) (xy->i this x y)))
+  (nth (raw this) (pos this x y)))
 
-(defn wset [this x y w]
-  (assoc this :w
-         (assoc (:w this) (xy->i this x y) w)))
-
-;; todo test
-(defn w-vec [v]
+(defn pos-seq [v]
   (let [[sx sy] (shape v)]
-    (vec (for [y (range sy), x (range sx)]
-           (wget v x y)))))
+    (for [y (range sy), x (range sx)]
+      (pos v x y))))
+
+(defn raw-vec [v]
+  (vec (map (raw v) (pos-seq v))))
+
+(defn copy [v]
+  (let [[sx sy] (shape v)]
+    (vol sx sy (raw-vec v))))
+
+(defn slice [v start end]
+  (let [[_ sy] (shape v)
+        len (- end start)]
+    (assoc v
+           :shape [len sy]
+           :posf (gen-posf [len sy] (fn [x y] (pos v (+ x start) y))))))
+
+(defn rows [v]
+  (let [[len _] (shape v)]
+    (map (fn [x] (slice v x (inc x)))
+         (range len))))
+
+(defn partition-row [v n]
+  (let[[len _] (shape v)
+       step (range 0 (inc len) n)]
+    (map (fn [s e] (slice v s e))
+         step
+         (rest step))))
+
+(defn T
+  "転置行列"
+  [v]
+  (let [[sx sy] (shape v)]
+    (assoc v
+           :shape [sy sx]
+           :posf (gen-posf [sy sx] (fn [x y] (pos v y x))))))
+
+(defn dot
+  "w行列の掛け算"
+  [v1 v2]
+  (p :dot
+     (let [[sx1 sy1] (shape v1)
+           [sx2 sy2] (shape v2)]
+       (vol sx2 sy1
+            (let [v1-y-range (range sy1)
+                  v1-rows (mapv (fn [y] (map #(wget v1 % y) (range sx1)))
+                                v1-y-range)
+                  v2-x-range (range sx2)
+                  v2-cols (mapv (fn [x] (map #(wget v2 x %) (range sy2)))
+                                v2-x-range)
+                  xy (for [y (range sy1), x (range sx2)]
+                       [x y])]
+              (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
+                    xy))))))
 
 (defn w-elm-op [f this other]
-  (let [[sx sy] (shape this)]
-    (vol sx sy (mapv f (w-vec this) (w-vec other)))))
+  (p :w-elm-op
+     (let [[sx sy] (shape this)]
+       (vol sx sy (mapv f (raw-vec this) (raw-vec other))))))
 
 (defn w+
   "w行列の同じ要素同士を足し合わせる, v1,v2は同じサイズとする"
@@ -79,75 +138,41 @@
   [v1 v2]
   (w-elm-op * v1 v2))
 
-(defn dot
-  "w行列の掛け算"
-  [v1 v2]
-  (let [[sx1 sy1] (shape v1)
-        [sx2 sy2] (shape v2)]
-    (vol sx2 sy1
-         (let [v1-y-range (range sy1)
-               v1-rows (mapv (fn [y] (map #(wget v1 % y) (range sx1)))
-                             v1-y-range)
-               v2-x-range (range sx2)
-               v2-cols (mapv (fn [x] (map #(wget v2 x %) (range sy2)))
-                             v2-x-range)
-               xy (for [y (range sy1), x (range sx2)]
-                    [x y])]
-           (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
-                 xy)))))
-
-(defn T
-  "転置行列"
-  [v]
-  (update v :T not))
 
 (defn repeat-vol
   [v n]
-  (dot v (vol n 1 (fill-vec n 1))))
+  (p :repeat
+     (let [[_ sy] (shape v)]
+       (assoc v
+              :shape [n sy]
+              :posf (gen-posf [n sy] (fn [x y] (pos v 0 y)))))))
 
-(defn sum-vol
+(defn sum-row
   "行を足し合わせて1xNの行列にする"
   [v]
-  (let [[n _] (shape v)]
-    (dot v (vol 1 n (fill-vec n 1)))))
+  (p :sum-vol
+     (let [[n _] (shape v)]
+       (dot v (vol 1 n (fill-vec n 1))))))
 
-(defn row [v row]
-  (let [[_ row-len] (shape v)]
-    (vol 1 row-len (mapv #(wget v row %) (range row-len)))))
-
-(defn rows [v]
-  (let [[row-len _] (shape v)]
-    (map #(row v %) (range row-len))))
-
-(defn append-row [v row]
-  (let [[sx sy] (shape v)
-        rows (conj (vec (rows v)) row)]
-    (T
-     (vol sy
-          (inc sx)
-          (apply concat (map :w rows))))))
-
-(defn stack-rows [& rows]
-  (reduce append-row (first rows) (rest rows)))
 
 (defn w-max
   [v]
-  (apply max (:w v)))
+  (apply max (raw-vec v)))
 
 (defn reduce-elm
   "要素を集計する"
   ([f init v]
-   (reduce f init (:w v)))
+   (reduce f init (raw-vec v)))
   ([f v]
-   (reduce f 0 (:w v))))
+   (reduce f 0 (raw-vec v))))
 
 (defn map-w
   ([f v]
    (let [[sx sy] (shape v)]
-     (vol sx sy (mapv f (w-vec v)))))
+     (vol sx sy (mapv f (raw-vec v)))))
   ([f v1 v2]
    (let [[sx sy] (shape v1)]
-     (vol sx sy (mapv f (w-vec v1) (w-vec v2))))))
+     (vol sx sy (mapv f (raw-vec v1) (raw-vec v2))))))
 
 ;; todo test
 (defn map-row
@@ -156,11 +181,12 @@
         [sx sy] (shape v)]
     (T
      (vol sy sx
-          (vec (apply concat (map w-vec done))))))
-  )
+          (vec (apply concat (map raw-vec done)))))))
 
 (defn argmax [v]
-  (let [m (apply max (:w v))]
-    (reduce-kv (fn [acc i w] (if (= w m) i acc))
-               0
-               (:w v))))
+  (let [[_ size] (shape v)]
+    (reduce (fn [max-i i] (if (< (wget v 0 max-i) (wget v 0 i))
+                            i
+                            max-i))
+            0
+            (range size))))
