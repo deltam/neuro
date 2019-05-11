@@ -1,7 +1,9 @@
 (ns mnist.core
+;  (:require [taoensso.tufte :refer [p]])
   (:require [mnist.data :as md]
             [neuro.core :as nc]
             [neuro.train :as nt]
+            [neuro.vol :as vl]
             [clojure.java.shell :refer [sh]]))
 
 (def net
@@ -10,16 +12,26 @@
    :sigmoid 30 :fc
    :softmax 10))
 
-(def my-data (shuffle (md/load-train)))
-(def test-data (take 10000 my-data))
-(def train-data (drop 10000 my-data))
+(def my-data (let [[img lbl] (md/load-train)
+                   [len _] (vl/shape img)
+                   perm (vec (shuffle (range len)))
+                   imgr (assoc img :posf (fn [x y] (vl/pos img (perm x) y)))
+                   lblr (assoc lbl :posf (fn [x y] (vl/pos lbl (perm x) y)))]
+               [(vl/slice imgr 0 10000) (vl/slice lblr 0 10000)]
+;               [imgr lblr]
+               ))
+(def test-data (map #(vl/slice % 0 1000) my-data))
+(def train-data (let [[len _] (vl/shape (first my-data))]
+                  (map #(vl/slice % 1000 len) my-data)))
 
-(defn evaluate [net test-pairs]
-  (let [fwd (pmap (fn [[img-vol label-vol]]
-                    (= (md/vol->digit label-vol)
-                       (md/vol->digit (nc/feedforward net img-vol))))
-                  test-pairs)]
-    (count (filter true? fwd))))
+(defn evaluate [net [img-vol label-vol]]
+  (let [done (nc/feedforward net img-vol)
+        check (pmap (fn [done-vol lbl-vol]
+                      (= (md/vol->digit done-vol)
+                         (md/vol->digit lbl-vol)))
+                    (vl/rows done)
+                    (vl/rows label-vol))]
+    (count (filter true? check))))
 
 (def ^:private start-time-now-epoch (atom 0))
 
@@ -27,7 +39,7 @@
 
 (defn report [ep net]
   (let [ok (evaluate net test-data)
-        n (count test-data)
+        [n _] (vl/shape (first test-data))
         elapsed (- (System/currentTimeMillis) @start-time-now-epoch)]
     (printf "\nepoch %d: %d / %d  (%4.2f min)\n" ep ok n (float (/ elapsed 60000.0)))
     (flush)
@@ -54,7 +66,8 @@
                     :learning-rate 1.0
                     :epoch-reporter report
                     :mini-batch-reporter mini-batch-report]
-     (nc/sgd net train-data))))
+     (let [[img-vol lbl-vol] train-data]
+       (nc/sgd net img-vol lbl-vol)))))
 
 
 (defn print-time-to-next-epoch []
