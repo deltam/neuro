@@ -97,5 +97,4 @@
           (recur (rest pairs)
                  (conj img-vec (map #(byte->float (aget ^bytes img %))
                                     (range (* 28 28))))
-                 (conj lbl-vec (map #(if (= % digit) 1.0 0.0)
-                                    (range 10)))))))))
+                 (conj lbl-vec (vl/one-hot-vec digit 10))))))))

@@ -12,17 +12,15 @@
    :sigmoid 30 :fc
    :softmax 10))
 
+(def train-size 60000)
+
 (def my-data (let [[img lbl] (md/load-train)
-                   [len _] (vl/shape img)
-                   perm (vec (shuffle (range len)))
-                   imgr (assoc img :posf (fn [x y] (vl/pos img (perm x) y)))
-                   lblr (assoc lbl :posf (fn [x y] (vl/pos lbl (perm x) y)))]
-               [(vl/slice imgr 0 10000) (vl/slice lblr 0 10000)]
-;               [imgr lblr]
-               ))
+                   perm (vl/gen-perm img)
+                   imgr (vl/shuffle img perm)
+                   lblr (vl/shuffle lbl perm)]
+               [imgr lblr]))
 (def test-data (map #(vl/slice % 0 1000) my-data))
-(def train-data (let [[len _] (vl/shape (first my-data))]
-                  (map #(vl/slice % 1000 len) my-data)))
+(def train-data (map #(vl/slice % 1000 train-size) my-data))
 
 (defn evaluate [net [img-vol label-vol]]
   (let [done (nc/feedforward net img-vol)
