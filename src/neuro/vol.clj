@@ -1,11 +1,12 @@
 (ns neuro.vol
   "Matrix for Neural Network"
   (:require [taoensso.tufte :refer [p]])
+  (:refer-clojure :exclude [repeat shuffle])
   )
 
 
 ;; util
-(defn fill-vec [len fill] (vec (repeat len fill)))
+(defn fill-vec [len fill] (vec (clojure.core/repeat len fill)))
 (defn zero-vec [len] (fill-vec len 0.0))
 
 (defn gauss-vec
@@ -139,7 +140,7 @@
   (w-elm-op * v1 v2))
 
 
-(defn repeat-vol
+(defn repeat
   [v n]
   (p :repeat
      (let [[_ sy] (shape v)]
@@ -190,3 +191,22 @@
                             max-i))
             0
             (range size))))
+
+(defn one-hot-vec
+  "Generate one-hot vector"
+  [n max]
+  (mapv #(if (= n %) 1.0 0.0)
+        (range max)))
+
+(defn gen-perm
+  "Generate Permutation index vector of sx"
+  [v]
+  (let [[len _] (shape v)]
+    (vec (clojure.core/shuffle (range len)))))
+
+(defn shuffle
+  "Shuffle index of sx"
+  ([v]
+   (shuffle v (gen-perm v)))
+  ([v perm]
+   (assoc v :posf (fn [x y] (pos v (perm x) y)))))

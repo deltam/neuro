@@ -39,7 +39,7 @@
              [len _] (vl/shape in-vol)]
          (assoc this
                 :in-vol in-vol
-                :out-vol (vl/w+ (vl/dot w in-vol) (vl/repeat-vol bias len))))))
+                :out-vol (vl/w+ (vl/dot w in-vol) (vl/repeat bias len))))))
   (backward [this grad-vol]
     (p :fc-back
        (assoc this

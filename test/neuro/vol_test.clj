@@ -1,4 +1,5 @@
 (ns neuro.vol-test
+  (:refer-clojure :exclude [repeat shuffle])
   (:require [clojure.test :refer :all]
             [neuro.vol :refer :all]))
 
@@ -130,10 +131,10 @@
              (raw done))))))
 
 
-(deftest repeat-vol-test
+(deftest repeat-test
     (testing "repeat vector"
     (let [v (vol [1 2 3])
-          done (repeat-vol v 2)]
+          done (repeat v 2)]
       (is (= [1 3] (shape v)))
       (is (= [2 3] (shape done)))
       (is (= [1 2 3
