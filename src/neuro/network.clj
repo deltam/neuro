@@ -1,5 +1,5 @@
 (ns neuro.network
-  (:require [taoensso.tufte :refer [p]])
+;  (:require [taoensso.tufte :refer [p]])
   (:require [neuro.layer :as ly]))
 
 
@@ -14,23 +14,20 @@
 (defrecord Network [layer]
   ly/Executable
   (forward [this in-vol]
-    (p :net-for
-       (assoc this :layer (reduce-layers (:layer this) ly/forward in-vol ly/output))))
+    (assoc this :layer (reduce-layers (:layer this) ly/forward in-vol ly/output)))
   (backward [this answer-vol]
-    (p :net-back
-       (assoc this :layer (vec (reverse
-                                (reduce-layers (reverse (:layer this)) ly/backward answer-vol ly/grad))))))
+    (assoc this :layer (vec (reverse
+                             (reduce-layers (reverse (:layer this)) ly/backward answer-vol ly/grad)))))
   (output [this]
     (let [out-layer (last (:layer this))]
       (ly/output out-layer)))
   (grad [this] (map ly/grad (:layer this)))
   ly/Optimizable
   (update-p [this f]
-    (p :net-up
-       (assoc this :layer (map #(if (satisfies? ly/Optimizable %)
-                                  (ly/update-p % f)
-                                  %)
-                               (:layer this))))))
+    (assoc this :layer (map #(if (satisfies? ly/Optimizable %)
+                               (ly/update-p % f)
+                               %)
+                            (:layer this)))))
 
 
 (defn network [& layers]
@@ -79,9 +76,8 @@
 
 (defn update-loss
   [net loss]
-  (p :update-loss
-     (assoc net :layer
-            (map #(if (nil? (:loss %))
-                    %
-                    (assoc % :loss loss))
-                 (:layer net)))))
+  (assoc net :layer
+         (map #(if (nil? (:loss %))
+                 %
+                 (assoc % :loss loss))
+              (:layer net))))

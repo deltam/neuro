@@ -1,5 +1,5 @@
 (ns neuro.train
-  (:require [taoensso.tufte :refer [p]])
+;  (:require [taoensso.tufte :refer [p]])
   (:require [neuro.layer :as ly]
             [neuro.network :as nw]
             [neuro.vol :as vl]))
@@ -68,8 +68,8 @@
 
 (defn update-mini-batch
   [net in-vol answer-vol]
-  (let [backed (p :update-mini-batch-backprop (backprop net in-vol answer-vol))]
-    [(p :update-mini-batch-update (ly/update-p backed (gen-w-updater)))
+  (let [backed (backprop net in-vol answer-vol)]
+    [(ly/update-p backed (gen-w-updater))
      (nw/loss backed)]))
 
 (defn reduce-mini-batchs

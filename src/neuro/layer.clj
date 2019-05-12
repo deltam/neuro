@@ -176,12 +176,12 @@
        (assoc this
               :out-vol (softmax-f-n in-vol))))
   (backward [this answer-vol]
-    (p :softmax-back)
-    (assoc this
-           :delta-vol (let [[batch-size _] (vl/shape answer-vol)]
-                        (vl/map-w #(/ % batch-size)
-                                  (vl/w- (:out-vol this) answer-vol)))
-           :loss (cross-entropy-n answer-vol (:out-vol this))))
+    (p :softmax-back
+       (assoc this
+              :delta-vol (let [[batch-size _] (vl/shape answer-vol)]
+                           (vl/map-w #(/ % batch-size)
+                                     (vl/w- (:out-vol this) answer-vol)))
+              :loss (cross-entropy-n answer-vol (:out-vol this)))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable
