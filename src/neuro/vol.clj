@@ -7,7 +7,14 @@
 
 ;; util
 (defn fill-vec [len fill] (vec (clojure.core/repeat len fill)))
-(defn zero-vec [len] (fill-vec len 0.0))
+
+(def ^:private zero-vec-inf (iterate #(conj % 0.0) []))
+(defn zero-vec [len] (nth zero-vec-inf len))
+
+(defn one-hot-vec
+  "Generate one-hot vector"
+  [n max]
+  (assoc (zero-vec max) n 1.0))
 
 (defn gauss-vec
   "Random numbers in accordance with Gaussian distribution"
@@ -27,13 +34,6 @@
 
 
 (defrecord VecVol [shape posf w])
-
-(defn- xy->i
-  "2次元から1次元への座標変換"
-  [v x y]
-  (if (:T v)
-    (+ y (* x (:sx v)))
-    (+ x (* y (:sx v)))))
 
 (defn gen-posf
   [[sx sy] f]
@@ -82,11 +82,15 @@
            :shape [len sy]
            :posf (gen-posf [len sy] (fn [x y] (pos v (+ x start) y))))))
 
-(defn rows [v]
-  (let [[len _] (shape v)]
-    (map (fn [x] (slice v x (inc x)))
-         (range len))))
+(defn rows
+  ([v]
+   (let [[len _] (shape v)]
+     (mapv (fn [x] (slice v x (inc x)))
+           (range len))))
+  ([v i]
+   (nth (rows v) i)))
 
+;; test
 (defn partition-row [v n]
   (let[[len _] (shape v)
        step (range 0 (inc len) n)]
@@ -191,12 +195,6 @@
                             max-i))
             0
             (range size))))
-
-(defn one-hot-vec
-  "Generate one-hot vector"
-  [n max]
-  (mapv #(if (= n %) 1.0 0.0)
-        (range max)))
 
 (defn gen-perm
   "Generate Permutation index vector of sx"
