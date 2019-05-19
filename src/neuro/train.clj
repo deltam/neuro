@@ -87,8 +87,8 @@
 (defn sgd
   "Stochastic gradient descent"
   [net in-vol answer-vol]
-  (let [in-pat (vl/partition-row in-vol (:mini-batch-size *train-params*))
-        ans-pat (vl/partition-row answer-vol (:mini-batch-size *train-params*))]
+  (let [in-pat (vl/partition in-vol (:mini-batch-size *train-params*))
+        ans-pat (vl/partition answer-vol (:mini-batch-size *train-params*))]
     (swap! *train-status* assoc :num-batchs (count in-pat))
     (loop [epoch 0, cur net]
       (swap! *train-status* assoc :now-epoch epoch)
