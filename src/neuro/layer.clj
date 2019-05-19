@@ -1,6 +1,6 @@
 (ns neuro.layer
   "Neural Network Layer"
-;  (:require [taoensso.tufte :refer [p]])
+  (:require [taoensso.tufte :refer [p]])
   (:require [neuro.vol :as vl]))
 
 (defprotocol Executable
@@ -34,16 +34,18 @@
 (defrecord FullConn [in out w bias in-vol out-vol dw dbias delta-vol]
   Executable
   (forward [this in-vol]
-    (let [{w :w, bias :bias} this
-          [len _] (vl/shape in-vol)]
-      (assoc this
-             :in-vol in-vol
-             :out-vol (vl/w+ (vl/dot in-vol w) (vl/repeat bias len)))))
+    (p :fc-for
+       (let [{w :w, bias :bias} this
+             [len _] (vl/shape in-vol)]
+         (assoc this
+                :in-vol in-vol
+                :out-vol (vl/w+ (vl/dot in-vol w) (vl/repeat bias len))))))
   (backward [this grad-vol]
-    (assoc this
-           :dw (vl/dot (vl/T (:in-vol this)) grad-vol)
-           :dbias (vl/sum-row grad-vol)
-           :delta-vol (vl/dot grad-vol (vl/T (:w this)))))
+    (p :fc-back
+       (assoc this
+              :dw (vl/dot (vl/T (:in-vol this)) grad-vol)
+              :dbias (vl/sum-row grad-vol)
+              :delta-vol (vl/dot grad-vol (vl/T (:w this))))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable
@@ -169,14 +171,16 @@
 (defrecord Softmax [out out-vol delta-vol loss]
   Executable
   (forward [this in-vol]
-    (assoc this
-           :out-vol (softmax-f-n in-vol)))
+    (p :softmax-for
+       (assoc this
+              :out-vol (softmax-f-n in-vol))))
   (backward [this answer-vol]
-    (assoc this
-           :delta-vol (let [[batch-size _] (vl/shape answer-vol)]
-                        (vl/map-w #(/ % batch-size)
-                                  (vl/w- (:out-vol this) answer-vol)))
-           :loss (cross-entropy-n answer-vol (:out-vol this))))
+    (p :softmax-back
+       (assoc this
+              :delta-vol (let [[batch-size _] (vl/shape answer-vol)]
+                           (vl/map-w #(/ % batch-size)
+                                     (vl/w- (:out-vol this) answer-vol)))
+              :loss (cross-entropy-n answer-vol (:out-vol this)))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable
