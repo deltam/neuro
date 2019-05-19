@@ -86,15 +86,11 @@
   (let [image-buf (read-as-byte-buf images-filename)
         images (read-repeat-chunk image-buf
                                   image-header-spec image-chunk-spec)
+        img-vec (mapcat (fn [img] (map #(byte->float (aget ^bytes img %))
+                                       (range (* 28 28))))
+                        images)
         label-buf (read-as-byte-buf labels-filename)
-        labels (read-repeat-chunk label-buf
-                                  label-header-spec label-chunk-spec)]
-    (loop [pairs (map vector images labels), img-vec [], lbl-vec []]
-      (if (empty? pairs)
-        [(vl/T (vl/vol (* 28 28) (count images) (doall (apply concat img-vec))))
-         (vl/T (vl/vol 10 (count labels) (doall (apply concat lbl-vec))))]
-        (let [[img digit] (first pairs)]
-          (recur (rest pairs)
-                 (conj img-vec (map #(byte->float (aget ^bytes img %))
-                                    (range (* 28 28))))
-                 (conj lbl-vec (vl/one-hot-vec digit 10))))))))
+        label-vec (read-repeat-chunk label-buf
+                                     label-header-spec label-chunk-spec)]
+    [(vl/vol (count images) (* 28 28) img-vec)
+     (vl/one-hot 10 label-vec)]))
