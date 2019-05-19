@@ -38,12 +38,12 @@
           [len _] (vl/shape in-vol)]
       (assoc this
              :in-vol in-vol
-             :out-vol (vl/w+ (vl/dot w in-vol) (vl/repeat bias len)))))
+             :out-vol (vl/w+ (vl/dot in-vol w) (vl/repeat bias len)))))
   (backward [this grad-vol]
     (assoc this
-           :dw (vl/dot grad-vol (vl/T (:in-vol this)))
+           :dw (vl/dot (vl/T (:in-vol this)) grad-vol)
            :dbias (vl/sum-row grad-vol)
-           :delta-vol (vl/dot (vl/T (:w this)) grad-vol)))
+           :delta-vol (vl/dot grad-vol (vl/T (:w this)))))
   (output [this] (:out-vol this))
   (grad [this] (:delta-vol this))
   Optimizable
@@ -57,8 +57,8 @@
 (defn fc
   [in out]
   (->FullConn in out
-              (vl/vol in out)
-              (vl/vol 1 out (vl/zero-vec out))
+              (vl/rand in out)
+              (vl/zeros out)
               nil
               nil
               nil
@@ -139,7 +139,9 @@
     (vl/map-w #(/ % sum) es)))
 
 (defn softmax-f-n [in-vol]
-  (vl/map-row softmax-f in-vol))
+  (let [[col row] (vl/shape in-vol)
+        done (map softmax-f (vl/rows in-vol))]
+    (vl/vol col row (apply concat (map vl/raw-vec done)))))
 
 (defn- clip
   "1e-10 - 1.0 の間に重みを正規化"
@@ -152,7 +154,7 @@
 (defn- cross-entropy
   "cross-entropy 誤差関数"
   [answer-vol out-vol]
-  (let [i (vl/argmax answer-vol)
+  (let [[_ i] (vl/argmax answer-vol)
         v (+ (vl/wget out-vol 0 i) 1e-7)
 ;        v (vl/wget (clip out-vol) 0 i)
         ]
