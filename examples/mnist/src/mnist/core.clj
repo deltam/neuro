@@ -1,7 +1,9 @@
 (ns mnist.core
+;  (:require [taoensso.tufte :refer [p]])
   (:require [mnist.data :as md]
             [neuro.core :as nc]
             [neuro.train :as nt]
+            [neuro.vol :as vl]
             [clojure.java.shell :refer [sh]]))
 
 (def net
@@ -10,16 +12,24 @@
    :sigmoid 30 :fc
    :softmax 10))
 
-(def my-data (shuffle (md/load-train)))
-(def test-data (take 10000 my-data))
-(def train-data (drop 10000 my-data))
+(def train-size 60000)
 
-(defn evaluate [net test-pairs]
-  (let [fwd (pmap (fn [[img-vol label-vol]]
-                    (= (md/vol->digit label-vol)
-                       (md/vol->digit (nc/feedforward net img-vol))))
-                  test-pairs)]
-    (count (filter true? fwd))))
+(def my-data (let [[img lbl] (md/load-train)
+                   perm (vl/gen-perm img)
+                   imgr (vl/shuffle img perm)
+                   lblr (vl/shuffle lbl perm)]
+               [imgr lblr]))
+(def test-data (map #(vl/slice % 0 1000) my-data))
+(def train-data (map #(vl/slice % 1000 train-size) my-data))
+
+(defn evaluate [net [img-vol label-vol]]
+  (let [done (nc/feedforward net img-vol)
+        check (pmap (fn [done-vol lbl-vol]
+                      (= (md/vol->digit done-vol)
+                         (md/vol->digit lbl-vol)))
+                    (vl/rows done)
+                    (vl/rows label-vol))]
+    (count (filter true? check))))
 
 (def ^:private start-time-now-epoch (atom 0))
 
@@ -27,7 +37,7 @@
 
 (defn report [ep net]
   (let [ok (evaluate net test-data)
-        n (count test-data)
+        [n _] (vl/shape (first test-data))
         elapsed (- (System/currentTimeMillis) @start-time-now-epoch)]
     (printf "\nepoch %d: %d / %d  (%4.2f min)\n" ep ok n (float (/ elapsed 60000.0)))
     (flush)
@@ -54,7 +64,8 @@
                     :learning-rate 1.0
                     :epoch-reporter report
                     :mini-batch-reporter mini-batch-report]
-     (nc/sgd net train-data))))
+     (let [[img-vol lbl-vol] train-data]
+       (nc/sgd net img-vol lbl-vol)))))
 
 
 (defn print-time-to-next-epoch []

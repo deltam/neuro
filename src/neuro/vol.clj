@@ -1,13 +1,11 @@
 (ns neuro.vol
   "Matrix for Neural Network"
-;  (:require [taoensso.tufte :refer [p]])
+  (:require [taoensso.tufte :refer [p]])
+  (:refer-clojure :exclude [repeat shuffle partition print rand])
   )
 
 
 ;; util
-(defn fill-vec [len fill] (vec (repeat len fill)))
-(defn zero-vec [len] (fill-vec len 0.0))
-
 (defn gauss-vec
   "Random numbers in accordance with Gaussian distribution"
   [len c]
@@ -25,45 +23,137 @@
   (gauss-vec len (Math/sqrt (/ 2.0 num-nodes))))
 
 
-(defrecord VecVol [sx sy w T])
+(defrecord VecVol [shape posf w])
+
+(def raw :w)
+
+(def shape :shape)
+
+(defn pos [v c r]
+  ((:posf v) c r))
+
+(defn gen-posf
+  [[col row] f]
+  (fn [c r]
+    (if (and (<= 0 c) (< c col) (<= 0 r) (< r row))
+      (f c r)
+      (throw (IndexOutOfBoundsException. (str "index=" [c r] ": shape=" [col row]))))))
+
+
+;; generate
 
 (defn vol
-  "as matrix, col -> :sy, row -> :sx"
-  ([ix iy wv]
-   (->VecVol ix iy wv false))
-  ([ix iy]
-   (vol ix iy (xavier-vec (* ix iy) ix)))
+  "as matrix col, row"
+  ([col row wv]
+   (->VecVol [col row]
+             (gen-posf [col row] (fn [c r] (+ (* c row) r)))
+             (vec wv)))
   ([wv] ; 1 dim
    (vol 1 (count wv) wv)))
 
-(defn shape [v]
-  (if (:T v)
-    [(:sy v) (:sx v)]
-    [(:sx v) (:sy v)]))
+(defn fill
+  ([col row fillv]
+   (let [v (vol col row [fillv])]
+     (assoc v :posf (gen-posf (shape v)
+                              (fn [_ _] 0)))))
+  ([len fillv] (fill 1 len fillv)))
 
-(defn- xy->i
-  "2次元から1次元への座標変換"
-  [v x y]
-  (if (:T v)
-    (+ y (* x (:sx v)))
-    (+ x (* y (:sx v)))))
+(defn zeros
+  ([col row] (fill col row 0.0))
+  ([len] (zeros 1 len)))
 
-(defn wget [this x y]
-  (nth (:w this) (xy->i this x y)))
+(defn ones
+  ([col row] (fill col row 1.0))
+  ([len] (ones 1 len)))
 
-(defn wset [this x y w]
-  (assoc this :w
-         (assoc (:w this) (xy->i this x y) w)))
+(defn rand
+  ([col row]
+   (vol col row (xavier-vec (* col row) col)))
+  ([len] (rand 1 len)))
 
-;; todo test
-(defn w-vec [v]
-  (let [[sx sy] (shape v)]
-    (vec (for [y (range sy), x (range sx)]
-           (wget v x y)))))
+(defn one-hot [max idx-seq]
+  (let [v (vol (count idx-seq) max [0.0 1.0])]
+    (assoc v :posf
+           (gen-posf (shape v)
+                     (fn [c r]
+                       (let [i (nth idx-seq c)]
+                         (if (= r i) 1 0)))))))
+
+
+
+
+(defn wget [this c r]
+  (nth (raw this) (pos this c r)))
+
+(defn pos-seq [v]
+  (let [[col row] (shape v)]
+    (for [c (range col), r (range row)]
+      (pos v c r))))
+
+(defn raw-vec [v]
+  (vec (map (raw v) (pos-seq v))))
+
+(defn clone [v]
+  (let [[col row] (shape v)]
+    (vol col row (raw-vec v))))
+
+(defn print [v]
+  (let [[col row] (shape v)]
+    (doseq [c (range col), r (range row)]
+      (clojure.core/print (wget v c r))
+      (if (= (inc r) row)
+        (println)
+        (clojure.core/print "\t")))))
+
+
+(defn slice [v start-col end-col]
+  (let [[_ row] (shape v)
+        len (- end-col start-col)]
+    (assoc v
+           :shape [len row]
+           :posf (gen-posf [len row] (fn [c r] (pos v (+ c start-col) r))))))
+
+(defn rows
+  ([v]
+   (let [[len _] (shape v)]
+     (mapv (fn [c] (slice v c (inc c)))
+           (range len))))
+  ([v i]
+   (nth (rows v) i)))
+
+(defn partition [v n]
+  (let[[len _] (shape v)
+       step (range 0 (inc len) n)]
+    (map (fn [s e] (slice v s e))
+         step
+         (rest step))))
+
+
+
+(defn T
+  "転置行列"
+  [v]
+  (let [[col row] (shape v)]
+    (assoc v
+           :shape [row col]
+           :posf (gen-posf [row col] (fn [c r] (pos v r c))))))
+
+(defn dot
+  "w行列の掛け算 (dot [N M] [M K]) = [N K]"
+  [v1 v2]
+  (p :dot
+     (let [[col1 row1] (shape v1)
+           [col2 row2] (shape v2)
+           raw-vec1 (clojure.core/partition row1 (raw-vec v1))
+           raw-vec2 (clojure.core/partition col2 (raw-vec (T v2)))]
+       (vol col1 row2
+            (for [rv1 raw-vec1, rv2 raw-vec2]
+              (apply + (map * rv1 rv2)))))))
+
 
 (defn w-elm-op [f this other]
   (let [[sx sy] (shape this)]
-    (vol sx sy (mapv f (w-vec this) (w-vec other)))))
+    (vol sx sy (map f (raw-vec this) (raw-vec other)))))
 
 (defn w+
   "w行列の同じ要素同士を足し合わせる, v1,v2は同じサイズとする"
@@ -79,88 +169,61 @@
   [v1 v2]
   (w-elm-op * v1 v2))
 
-(defn dot
-  "w行列の掛け算"
-  [v1 v2]
-  (let [[sx1 sy1] (shape v1)
-        [sx2 sy2] (shape v2)]
-    (vol sx2 sy1
-         (let [v1-y-range (range sy1)
-               v1-rows (mapv (fn [y] (map #(wget v1 % y) (range sx1)))
-                             v1-y-range)
-               v2-x-range (range sx2)
-               v2-cols (mapv (fn [x] (map #(wget v2 x %) (range sy2)))
-                             v2-x-range)
-               xy (for [y (range sy1), x (range sx2)]
-                    [x y])]
-           (mapv (fn [[x y]] (apply + (map * (nth v1-rows y) (nth v2-cols x))))
-                 xy)))))
 
-(defn T
-  "転置行列"
-  [v]
-  (update v :T not))
-
-(defn repeat-vol
+(defn repeat
   [v n]
-  (dot v (vol n 1 (fill-vec n 1))))
+  (let [[_ row] (shape v)]
+    (assoc v
+           :shape [n row]
+           :posf (gen-posf [n row] (fn [_ r] (pos v 0 r))))))
 
-(defn sum-vol
+(defn sum-row
   "行を足し合わせて1xNの行列にする"
   [v]
-  (let [[n _] (shape v)]
-    (dot v (vol 1 n (fill-vec n 1)))))
+  (p :sum-row
+     (let [[n _] (shape v)]
+       (dot (ones n) v))))
 
-(defn row [v row]
-  (let [[_ row-len] (shape v)]
-    (vol 1 row-len (mapv #(wget v row %) (range row-len)))))
-
-(defn rows [v]
-  (let [[row-len _] (shape v)]
-    (map #(row v %) (range row-len))))
-
-(defn append-row [v row]
-  (let [[sx sy] (shape v)
-        rows (conj (vec (rows v)) row)]
-    (T
-     (vol sy
-          (inc sx)
-          (apply concat (map :w rows))))))
-
-(defn stack-rows [& rows]
-  (reduce append-row (first rows) (rest rows)))
 
 (defn w-max
   [v]
-  (apply max (:w v)))
+  (apply max (raw-vec v)))
+
+(defn argmax [v]
+  (let [[col row] (shape v)]
+    (reduce (fn [[mc mr] [c r]] (if (< (wget v mc mr) (wget v c r))
+                                  [c r]
+                                  [mc mr]))
+            [0 0]
+            (for [c (range col), r (range row)]
+              [c r]))))
+
 
 (defn reduce-elm
   "要素を集計する"
   ([f init v]
-   (reduce f init (:w v)))
+   (reduce f init (raw-vec v)))
   ([f v]
-   (reduce f 0 (:w v))))
+   (reduce f 0 (raw-vec v))))
 
 (defn map-w
   ([f v]
-   (let [[sx sy] (shape v)]
-     (vol sx sy (mapv f (w-vec v)))))
+   (let [[col row] (shape v)]
+     (vol col row (map f (raw-vec v)))))
   ([f v1 v2]
-   (let [[sx sy] (shape v1)]
-     (vol sx sy (mapv f (w-vec v1) (w-vec v2))))))
+   (let [[col row] (shape v1)]
+     (vol col row (map f (raw-vec v1) (raw-vec v2))))))
 
-;; todo test
-(defn map-row
-  [f v]
-  (let [done (map f (rows v))
-        [sx sy] (shape v)]
-    (T
-     (vol sy sx
-          (vec (apply concat (map w-vec done))))))
-  )
 
-(defn argmax [v]
-  (let [m (apply max (:w v))]
-    (reduce-kv (fn [acc i w] (if (= w m) i acc))
-               0
-               (:w v))))
+(defn gen-perm
+  "Generate Permutation index vector of cols"
+  [v]
+  (let [[len _] (shape v)]
+    (vec (clojure.core/shuffle (range len)))))
+
+(defn shuffle
+  "Shuffle index of sx"
+  ([v]
+   (shuffle v (gen-perm v)))
+  ([v perm]
+   (assoc v :posf (fn [c r] (pos v (perm c) r)))))

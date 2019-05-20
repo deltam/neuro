@@ -38,17 +38,14 @@
              (bit-and (int (bit-shift-left g 4)) 0x0000ff00)
              (bit-and (int g) 0xff)))))
 
-(defn ^BufferedImage vol->image [{w :w}]
+(defn ^BufferedImage vol->image [v]
   (let [img-buf (BufferedImage. 28 28 BufferedImage/TYPE_BYTE_GRAY)]
     (doseq [x (range 28), y (range 28)]
-      (.setRGB ^BufferedImage img-buf x y (gray->rgb (nth w (+ x (* y 28))))))
+      (.setRGB ^BufferedImage img-buf x y (gray->rgb (vl/wget v 0 (+ x (* y 28))))))
     img-buf))
 
-(defn vol->digit [{w :w}]
-  (reduce (fn [r d] (if (< (nth w r) (nth w d))
-                      d
-                      r))
-          (range 10)))
+(defn vol->digit [v]
+  (vl/argmax v))
 
 (defn in-dig
   "`(filter (in-dig 0 1) (:train (mnist.data/dataset)))`"
@@ -89,16 +86,11 @@
   (let [image-buf (read-as-byte-buf images-filename)
         images (read-repeat-chunk image-buf
                                   image-header-spec image-chunk-spec)
+        img-vec (mapcat (fn [img] (map #(byte->float (aget ^bytes img %))
+                                       (range (* 28 28))))
+                        images)
         label-buf (read-as-byte-buf labels-filename)
-        labels (read-repeat-chunk label-buf
-                                  label-header-spec label-chunk-spec)]
-    (loop [pairs (map vector images labels), ret []]
-      (if (empty? pairs)
-        ret
-        (let [[img digit] (first pairs)]
-          (recur (rest pairs)
-                 (conj ret
-                       [(vl/vol (doall (mapv #(byte->float (aget ^bytes img %))
-                                             (range (* 28 28)))))
-                        (vl/vol (doall (mapv #(if (= % digit) 1.0 0.0)
-                                             (range 10))))])))))))
+        label-vec (read-repeat-chunk label-buf
+                                     label-header-spec label-chunk-spec)]
+    [(vl/vol (count images) (* 28 28) img-vec)
+     (vl/one-hot 10 label-vec)]))

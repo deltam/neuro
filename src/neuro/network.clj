@@ -1,4 +1,5 @@
 (ns neuro.network
+;  (:require [taoensso.tufte :refer [p]])
   (:require [neuro.layer :as ly]))
 
 
@@ -15,8 +16,8 @@
   (forward [this in-vol]
     (assoc this :layer (reduce-layers (:layer this) ly/forward in-vol ly/output)))
   (backward [this answer-vol]
-    (assoc this :layer (reverse
-                        (reduce-layers (reverse (:layer this)) ly/backward answer-vol ly/grad))))
+    (assoc this :layer (vec (reverse
+                             (reduce-layers (reverse (:layer this)) ly/backward answer-vol ly/grad)))))
   (output [this]
     (let [out-layer (last (:layer this))]
       (ly/output out-layer)))
@@ -30,7 +31,7 @@
 
 
 (defn network [& layers]
-  (->Network layers))
+  (->Network (vec layers)))
 
 (defn parse-net [& defs]
   (let [grp (partition 3 (concat defs [nil nil]))
