@@ -1,5 +1,5 @@
 (ns neuro.vol-test
-  (:refer-clojure :exclude [repeat shuffle partition])
+  (:refer-clojure :exclude [repeat shuffle partition rand print])
   (:require [clojure.test :refer :all]
             [neuro.vol :refer :all]))
 
