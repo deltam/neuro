@@ -143,12 +143,20 @@
   [v1 v2]
   (p :dot
      (let [[col1 row1] (shape v1)
-           [col2 row2] (shape v2)
-           raw-vec1 (clojure.core/partition row1 (raw-vec v1))
-           raw-vec2 (clojure.core/partition col2 (raw-vec (T v2)))]
+           [col2 row2] (shape v2)]
        (vol col1 row2
-            (for [rv1 raw-vec1, rv2 raw-vec2]
-              (apply + (map * rv1 rv2)))))))
+            (loop [c 0, r 0, ret (transient [])]
+              (cond
+                (<= col1 c) (persistent! ret)
+                (<= row2 r) (recur (inc c) 0 ret)
+                :else (recur c (inc r)
+                             (conj! ret
+                                    (loop [i 0, acc 0]
+                                      (if (<= row1 i)
+                                        acc
+                                        (recur (inc i)
+                                               (+ acc (* (wget v1 c i)
+                                                         (wget v2 i r))))))))))))))
 
 
 (defn w-elm-op [f this other]
