@@ -9,5 +9,5 @@
             [lein-jupyter "0.1.16"]]
   :source-paths ["src" "../../src"]
   :dependencies [[org.clojure/clojure "1.10.0"]]
-  :profiles {:dev {:dependencies [[com.taoensso/tufte "1.4.0"]]}}
+  :profiles {:dev {:dependencies [[com.taoensso/tufte "2.1.0-RC4"]]}}
   :repl-options {:init-ns spiral.core})
