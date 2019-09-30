@@ -1,6 +1,6 @@
 (ns neuro.vol
   "Matrix for Neural Network"
-  (:require [taoensso.tufte :refer [p]])
+;  (:require [taoensso.tufte :refer [p]])
   (:refer-clojure :exclude [repeat shuffle partition print rand])
   )
 
@@ -141,22 +141,21 @@
 (defn dot
   "w行列の掛け算 (dot [N M] [M K]) = [N K]"
   [v1 v2]
-  (p :dot
-     (let [[col1 row1] (shape v1)
-           [col2 row2] (shape v2)]
-       (vol col1 row2
-            (loop [c 0, r 0, ret (transient [])]
-              (cond
-                (<= col1 c) (persistent! ret)
-                (<= row2 r) (recur (inc c) 0 ret)
-                :else (recur c (inc r)
-                             (conj! ret
-                                    (loop [i 0, acc 0]
-                                      (if (<= row1 i)
-                                        acc
-                                        (recur (inc i)
-                                               (+ acc (* (wget v1 c i)
-                                                         (wget v2 i r))))))))))))))
+  (let [[col1 row1] (shape v1)
+        [col2 row2] (shape v2)]
+    (vol col1 row2
+         (loop [c 0, r 0, ret (transient [])]
+           (cond
+             (<= col1 c) (persistent! ret)
+             (<= row2 r) (recur (inc c) 0 ret)
+             :else (recur c (inc r)
+                          (conj! ret
+                                 (loop [i 0, acc 0]
+                                   (if (<= row1 i)
+                                     acc
+                                     (recur (inc i)
+                                            (+ acc (* (wget v1 c i)
+                                                      (wget v2 i r)))))))))))))
 
 
 (defn w-elm-op [f this other]
@@ -188,9 +187,8 @@
 (defn sum-row
   "行を足し合わせて1xNの行列にする"
   [v]
-  (p :sum-row
-     (let [[n _] (shape v)]
-       (dot (ones n) v))))
+  (let [[n _] (shape v)]
+    (dot (ones n) v)))
 
 
 (defn w-max
