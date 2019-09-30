@@ -58,7 +58,7 @@
 ;;; backpropagation
 
 (defn backprop
-  "do backpropagation of 1 train-pair"
+  "do backpropagation"
   [net in-vol answer-vol]
   (let [net-f (ly/forward net in-vol)]
     (ly/backward net-f answer-vol)))
@@ -74,15 +74,16 @@
 
 (defn reduce-mini-batchs
   [init-net in-pat ans-pat]
-  (let [[new-net all-loss]
-        (reduce (fn [[net all-loss] [in-vol answer-vol]]
-                  (let [[next loss] (update-mini-batch net in-vol answer-vol)]
-                    (future ((:mini-batch-reporter *train-params*) next loss))
-                    [next (+ all-loss loss)]))
-                [init-net 0.0]
-                (map vector in-pat ans-pat))]
-    (add-train-loss! (/ all-loss (count in-pat)))
-    new-net))
+  (loop [net init-net, all-loss 0.0, in-vols in-pat, ans-vols ans-pat]
+    (let [in-vol (first in-vols), ans-vol (first ans-vols)]
+      (if (or (nil? in-vol) (nil? ans-vol))
+        (do
+          (add-train-loss! (/ all-loss (count in-pat)))
+          net)
+        (let [[next loss] (update-mini-batch net in-vol ans-vol)]
+          (future ((:mini-batch-reporter *train-params*) next loss))
+          (recur next, (+ all-loss loss), (rest in-vols), (rest ans-vols)))))))
+
 
 (defn sgd
   "Stochastic gradient descent"
