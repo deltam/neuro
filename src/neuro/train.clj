@@ -5,56 +5,6 @@
             [neuro.vol :as vl]))
 
 
-(def ^:dynamic *train-params*
-  "train hyper parameters"
-  {:learning-rate 0.01
-   :mini-batch-size 10
-   :epoch-limit 10
-   :updater nil
-   :epoch-reporter (fn [epoch net] nil)
-   :mini-batch-reporter (fn [net loss] nil)})
-
-(defn new-status []
-  "Generate train progress status"
-  {:now-epoch 0
-   :now-net nil
-   :num-batchs 0
-   :train-loss-history []})
-
-(def ^:dynamic *train-status*
-  "train progress status"
-  (atom (new-status)))
-
-(defn init! []
-  (reset! *train-status* (new-status)))
-
-(defn- add-train-loss! [loss]
-  (swap! *train-status* assoc :train-loss-history (conj (:train-loss-history @*train-status*) loss)))
-
-
-(defmacro with-params
-  "specified train parameters"
-  [params-vec train-expr]
-  (let [pm (apply hash-map params-vec)
-        conf (merge *train-params* (dissoc pm :train-status-var))
-        train-status-bind (if (:train-status-var pm) `(*train-status* ~(:train-status-var pm)))]
-    `(binding [*train-params* ~conf
-               ~@train-status-bind]
-       ~train-expr)))
-
-
-
-(defn gen-w-updater
-  "generate updater for weights and biases"
-  []
-  (if-let [f (:updater *train-params*)]
-    f
-    (let [lr (:learning-rate *train-params*)]
-      (fn [w dw]
-        (- w (* lr dw))))))
-
-
-
 ;;; backpropagation
 
 (defn backprop
@@ -63,40 +13,87 @@
   (let [net-f (ly/forward net in-vol)]
     (ly/backward net-f answer-vol)))
 
+(defn split-mini-batch
+  ([in-vol ans-vol size]
+   (map vector
+        (vl/partition in-vol size)
+        (vl/partition ans-vol size)))
+  ([[iv av] size] (split-mini-batch iv av size)))
 
-;;; train funcs
-
-(defn update-mini-batch
-  [net in-vol answer-vol]
+(defn mini-batch-updater [optimizer net [in-vol answer-vol]]
   (let [backed (backprop net in-vol answer-vol)]
-    [(ly/update-p backed (gen-w-updater))
-     (nw/loss backed)]))
+    (ly/update-p backed optimizer)))
 
-(defn reduce-mini-batchs
-  [init-net in-pat ans-pat]
-  (loop [net init-net, all-loss 0.0, in-vols in-pat, ans-vols ans-pat]
-    (let [in-vol (first in-vols), ans-vol (first ans-vols)]
-      (if (or (nil? in-vol) (nil? ans-vol))
-        (do
-          (add-train-loss! (/ all-loss (count in-pat)))
-          net)
-        (let [[next loss] (update-mini-batch net in-vol ans-vol)]
-          (future ((:mini-batch-reporter *train-params*) next loss))
-          (recur next, (+ all-loss loss), (rest in-vols), (rest ans-vols)))))))
+(defn gen-sgd-optimizer [lr]
+  (fn [w dw] (- w (* lr dw))))
 
 
-(defn sgd
-  "Stochastic gradient descent"
-  [net in-vol answer-vol]
-  (let [in-pat (vl/partition in-vol (:mini-batch-size *train-params*))
-        ans-pat (vl/partition answer-vol (:mini-batch-size *train-params*))]
-    (swap! *train-status* assoc :num-batchs (count in-pat))
-    (loop [epoch 0, cur net]
-      (swap! *train-status* assoc :now-epoch epoch)
-      (swap! *train-status* assoc :now-net cur)
-      (if (< epoch (:epoch-limit *train-params*))
-        (let [ep (inc epoch)
-              next (reduce-mini-batchs cur in-pat ans-pat)]
-          (future ((:epoch-reporter *train-params*) ep next))
-          (recur ep next))
-        cur))))
+
+;;; train
+
+(defn iterate-train-fn [model train-data-seq]
+  (fn [trainer]
+    (->> (iterate (fn [{m :model, [td & r] :rest, i :index, tl :total-loss}]
+                    (let [m2 (trainer m td)]
+                      {:model m2
+                       :index (inc i)
+                       :loss (nw/loss m2)
+                       :total-loss (cons (nw/loss m2) tl)
+                       :rest r}))
+                  {:model model
+                   :index -1
+                   :total-loss '()
+                   :rest train-data-seq})
+         (map #(dissoc % :rest))
+         (rest))))
+
+(defn iterate-mini-batch-train-fn [model mini-batchs]
+  (let [size (count mini-batchs)]
+    (fn [optimizer]
+      (->> ((iterate-train-fn model (cycle mini-batchs)) (partial mini-batch-updater optimizer))
+           (map #(-> %
+                     (assoc :epoch (int (/ (:index %) size)))
+                     (assoc :mini-batch (mod (:index %) size))))))))
+
+
+
+;;; reporting
+
+(defn wrap-prepare [f s]
+  (map #(do (f %)
+            %)
+       s))
+
+(defn with-report
+  ([step rf s]
+   (wrap-prepare #(when (zero? (mod (:index %) step))
+                    (rf %))
+                 s))
+  ([rf s] (with-report 1 rf s)))
+
+(defn with-epoch-report [f s]
+  (wrap-prepare #(when (zero? (:mini-batch %))
+                   (f %))
+                s))
+
+(defn accuracy [b mini-batch-size]
+  (float
+   (/ (apply + (take mini-batch-size (:total-loss b)))
+      mini-batch-size)))
+
+
+
+
+(comment
+
+  (def train-seq-fn
+    (let [batchs (nt/split-mini-batch train-data 20)]
+      (nt/iterate-mini-batch-train-fn net batchs)))
+
+  (def train-result
+    (->> (train-seq-fn (nt/gen-sgd-optimizer 1.0))
+         (nt/with-report 10 #(printf "%d - %02d: loss %f\n" (:epoch %) (:mini-batch %) (:loss %)))
+         (drop-while #(< (:epoch %) 10))
+         (first)))
+
+)
