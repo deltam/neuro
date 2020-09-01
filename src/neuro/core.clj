@@ -12,6 +12,10 @@
 
 (defalias gen-net nw/gen-net)
 (defalias feedforward nw/feedforward)
-(defalias with-params tr/with-params)
-(defalias init! tr/init!)
-(defalias sgd tr/sgd)
+
+(defalias iterate-train-fn tr/iterate-train-fn)
+(defalias iterate-mini-batch-train-fn tr/iterate-mini-batch-train-fn)
+(defalias split-mini-batch tr/split-mini-batch)
+(defalias gen-sgd-optimizer tr/gen-sgd-optimizer)
+
+(defalias with-epoch-report tr/with-epoch-report)
