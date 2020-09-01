@@ -26,48 +26,54 @@
             (vl/one-hot cat-num cat))))
 
 
-(def raw (shuffle (spiral-raw 100 3)))
-(def dataset (spiral->vol raw 3))
+(def raw (shuffle (spiral-raw 300 3)))
+(def test-data (spiral->vol (take 50 raw) 3))
+(def train-data (spiral->vol (drop 50 raw) 3))
 
 
-(def train-status (atom nil))
+(defn evaluate [net [xy-vol cat-vol]]
+  (let [done (nc/feedforward net xy-vol)
+        check (map (fn [done-vol cat-vol]
+                      (= (vl/argmax done-vol)
+                         (vl/argmax cat-vol)))
+                    (vl/rows done)
+                    (vl/rows cat-vol))]
+    (count (filter true? check))))
 
-(defn report [ep net]
-  (let [loss (last (:train-loss-history @train-status))]
-    (when (zero? (mod ep 10))
-      (printf "epoch %d: %f" ep loss)
-;      (let [[xy-vol cat-vol] dataset
-;            [len _] (vl/shape xy-vol)
-;            pred (nc/feedforward net xy-vol)]
-;        (print "\ttest: " (count
-;                           (filter (fn [[p cat]]
-;                                     (= (vl/argmax p) (vl/argmax cat)))
-;                                   (map vector
-;                                        (vl/rows pred)
-;                                        (vl/rows cat-vol))))
-;               "/" len))
-      (println)
-      (flush))))
+(def ^:private start-time-now-epoch (atom (System/currentTimeMillis)))
 
-(defn train
-  ([] (train net))
-  ([net]
-   (reset! train-status (nt/new-status))
-   (let [start (System/currentTimeMillis)
-         [xy-vol cat-vol] dataset
-         trained (nc/sgd net xy-vol cat-vol)]
-     (println "elapsed" (/ (- (System/currentTimeMillis) start) 1000.0) "sec")
-     trained
-   )))
+(def test-error-rates (atom []))
+
+(defn report [{ep :epoch, net :model, loss :loss}]
+  (let [elapsed (- (System/currentTimeMillis) @start-time-now-epoch)
+        ok (evaluate net test-data)
+        [n _] (vl/shape (first test-data))]
+    (printf "epoch %d:  loss = %4.4f, test = %d / %d (%4.2f min)\n" ep loss ok n (float (/ elapsed 60000.0)))
+    (flush)
+    (swap! test-error-rates conj (- 1.0 (/ (float ok) (float n))))
+    (reset! start-time-now-epoch (System/currentTimeMillis))))
+
+
+(defn train [net]
+  (let [batchs (nt/split-mini-batch train-data 30)
+        f (nc/iterate-mini-batch-train-fn net batchs)]
+    (->> (f (nt/gen-sgd-optimizer 1.0))
+         (nt/with-epoch-report report)
+         (drop-while #(< (:epoch %) 50))
+         (first))))
 
 (comment
-(def net2
-  (neuro.core/with-params [:epoch-limit 300
-                           :mini-batch-size 30
-                           :learning-rate 1.0
-                           :train-status-var train-status
-                           :epoch-reporter report]
-    (train net)))
+
+  (def train-seq-fn
+    (let [batchs (nt/split-mini-batch score/train-data 30)]
+      (nc/iterate-mini-batch-train-fn net batchs)))
+
+  (def result
+    (->> (train-seq-fn (nt/gen-sgd-optimizer 1.0))
+         (nt/with-epoch-report score/report)
+         (drop-while #(< (:epoch %) 100))
+         (first)))
+
 )
 
 
