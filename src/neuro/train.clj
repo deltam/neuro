@@ -51,9 +51,9 @@
   (let [size (count mini-batchs)]
     (fn [optimizer]
       (->> ((iterate-train-fn model (cycle mini-batchs)) (partial mini-batch-updater optimizer))
-           (map #(-> %
-                     (assoc :epoch (int (/ (:index %) size)))
-                     (assoc :mini-batch (mod (:index %) size))))))))
+           (map #(assoc %
+                        :epoch (int (/ (:index %) size))
+                        :mini-batch (mod (:index %) size)))))))
 
 
 
