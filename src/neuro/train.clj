@@ -72,7 +72,8 @@
   ([rf s] (with-report 1 rf s)))
 
 (defn with-epoch-report [f s]
-  (wrap-prepare #(when (zero? (:mini-batch %))
+  (wrap-prepare #(when (and (< 0 (:index %))
+                            (zero? (:mini-batch %)))
                    (f %))
                 s))
 
