@@ -41,24 +41,27 @@
     (count (filter true? check))))
 
 (def ^:private start-time-now-epoch (atom (System/currentTimeMillis)))
+(defn init-start-time-now-epoch! [] (reset! start-time-now-epoch (System/currentTimeMillis)))
 
 (def test-error-rates (atom []))
 
-(defn report [{ep :epoch, net :model, loss :loss}]
+(defn report [test-data {ep :epoch, net :model, loss :loss}]
   (let [elapsed (- (System/currentTimeMillis) @start-time-now-epoch)
         ok (evaluate net test-data)
         [n _] (vl/shape (first test-data))]
     (printf "epoch %d:  loss = %4.4f, test = %d / %d (%4.2f min)\n" ep loss ok n (float (/ elapsed 60000.0)))
     (flush)
     (swap! test-error-rates conj (- 1.0 (/ (float ok) (float n))))
-    (reset! start-time-now-epoch (System/currentTimeMillis))))
+    (init-start-time-now-epoch!)))
 
 
-(defn train [net]
+(defn train [net train-data test-data]
   (let [batchs (nt/split-mini-batch train-data 30)
         f (nc/iterate-mini-batch-train-fn net batchs)]
+    (init-start-time-now-epoch!)
+    (reset! test-error-rates [])
     (->> (f (nt/gen-sgd-optimizer 1.0))
-         (nt/with-epoch-report report)
+         (nt/with-epoch-report (partial report test-data))
          (drop-while #(< (:epoch %) 50))
          (first))))
 
@@ -68,9 +71,10 @@
     (let [batchs (nt/split-mini-batch score/train-data 30)]
       (nc/iterate-mini-batch-train-fn net batchs)))
 
+  (init-start-time-now-epoch!)
   (def result
     (->> (train-seq-fn (nt/gen-sgd-optimizer 1.0))
-         (nt/with-epoch-report score/report)
+         (nt/with-epoch-report (partial score/report score/test-data))
          (drop-while #(< (:epoch %) 100))
          (first)))
 
