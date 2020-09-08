@@ -12,19 +12,23 @@
    :sigmoid 30 :fc
    :softmax 10))
 
-(def my-data (let [[img lbl] (md/load-train)
-                   perm (vl/gen-perm img)
-                   imgr (vl/shuffle img perm)
-                   lblr (vl/shuffle lbl perm)]
-               [imgr lblr]))
-(def my-data-size (let [img (first my-data)]
-                    (first (vl/shape img))))
+(def all-train-data (let [[img lbl] (md/load-train)
+                          perm (vl/gen-perm img)
+                          imgr (vl/shuffle img perm)
+                          lblr (vl/shuffle lbl perm)]
+                      [imgr lblr]))
+(def all-train-data-size (let [img (first all-train-data)]
+                           (first (vl/shape img))))
+
+(defn slice-all-train-data [s e]
+  (map #(vl/slice % s e) all-train-data))
+
 
 (def test-size 1000)
-(def train-size (- my-data-size test-size))
+(def train-size (- all-train-data-size test-size))
 
-(def test-data (map #(vl/slice % 0 test-size) my-data))
-(def train-data (map #(vl/slice % test-size (+ test-size train-size)) my-data))
+(def test-data (slice-all-train-data 0 test-size))
+(def train-data (slice-all-train-data test-size (+ test-size train-size)))
 
 (defn evaluate [net [img-vol label-vol]]
   (let [done (nc/feedforward net img-vol)
@@ -35,18 +39,19 @@
                     (vl/rows label-vol))]
     (count (filter true? check))))
 
-(def ^:private start-time-now-epoch (atom (System/currentTimeMillis)))
+(def ^:private start-time-now-epoch (atom 0))
+(defn init-start-time-now-epoch! [] (reset! start-time-now-epoch (System/currentTimeMillis)))
 
 (def test-error-rates (atom []))
 
-(defn report [{net :model, ep :epoch}]
+(defn report [test-data {net :model, ep :epoch}]
   (let [ok (evaluate net test-data)
         [n _] (vl/shape (first test-data))
         elapsed (- (System/currentTimeMillis) @start-time-now-epoch)]
     (printf "epoch %d: %d / %d  (%4.2f min)\n" ep ok n (float (/ elapsed 60000.0)))
     (flush)
     (swap! test-error-rates conj (- 1.0 (/ (float ok) (float n))))
-    (reset! start-time-now-epoch (System/currentTimeMillis))
+    (init-start-time-now-epoch!)
 ;    (sh "say" (str "epoc " ep " " (float (* 100 (/ ok n))))) ; for mac user
     ))
 
@@ -57,8 +62,9 @@
 
 (defn train
   ([] (train net))
-  ([net]
-   (reset! start-time-now-epoch (System/currentTimeMillis))
+  ([net] (train net train-data test-data))
+  ([net train-data test-data]
+   (init-start-time-now-epoch!)
    (reset! test-error-rates [])
    (let [learning-rate 1.0
          limit         10
@@ -66,7 +72,7 @@
          batchs (nt/split-mini-batch train-data size)
          f (nt/iterate-mini-batch-train-fn net batchs)]
      (->> (f (nt/gen-sgd-optimizer learning-rate))
-          (nt/with-epoch-report report)
+          (nt/with-epoch-report (partial report test-data))
           (drop-while #(< (:epoch %) limit))
           (first)))))
 
@@ -77,10 +83,11 @@
     (let [batchs (neuro.train/split-mini-batch train-data 20)]
       (neuro.train/iterate-mini-batch-train-fn net batchs)))
 
-  (reset! start-time-now-epoch (System/currentTimeMillis))
-  (->> (train-seq-fn (neuro.train/gen-sgd-optimizer 1.0))
-       (neuro.train/with-epoch-report report)
-       (drop-while #(< (:epoch %) 10))
-       (first)
-       (:loss))
+  (init-start-time-now-epoch!)
+  (def result
+    (->> (train-seq-fn (neuro.train/gen-sgd-optimizer 1.0))
+         (neuro.train/with-epoch-report (partial report test-data))
+         (drop-while #(< (:epoch %) 10))
+         (first)
+         (:loss)))
 )
