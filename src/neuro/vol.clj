@@ -145,8 +145,8 @@
            :shape [row col]
            :posf (gen-posf [row col] (fn [c r] (pos v r c))))))
 
-(defn dot
-  "w行列の掛け算 (dot [N M] [M K]) = [N K]"
+
+(defn- dot-serial
   [v1 v2]
   (let [[col1 row1] (shape v1)
         [col2 row2] (shape v2)]
@@ -163,6 +163,28 @@
                                      (recur (inc i)
                                             (+ acc (* (wget v1 c i)
                                                       (wget v2 i r)))))))))))))
+
+(defn- dot-conc
+  [v1 v2]
+  (let [[col1 row1] (shape v1)
+        [col2 row2] (shape v2)]
+    (let [rs1 (map raw-vec (rows v1))
+          rs2 (map raw-vec (rows (T v2)))]
+      (vol col1 row2
+           (vec
+            (pmap (fn [[r1 r2]] (apply + (map * r1 r2)))
+                  (for [r1 rs1, r2 rs2]
+                    [r1 r2])))))))
+
+(defn dot
+  "w行列の掛け算 (dot [N M] [M K]) = [N K]"
+  [v1 v2]
+  (let [[c _] (shape v1)
+        [_ r] (shape v2)]
+    (if (< 100 (* c r))
+      (dot-conc v1 v2)
+      (dot-serial v1 v2))))
+
 
 
 (defn w-elm-op [f this other]
