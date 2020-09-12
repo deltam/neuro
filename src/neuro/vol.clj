@@ -113,6 +113,13 @@
            :shape [len row]
            :posf (gen-posf [len row] (fn [c r] (pos v (+ c start-col) r))))))
 
+(defn take-slice [n v]
+  (slice v 0 n))
+
+(defn drop-slice [n v]
+  (let [[len _] (shape v)]
+    (slice v n len)))
+
 (defn rows
   ([v]
    (let [[len _] (shape v)]
